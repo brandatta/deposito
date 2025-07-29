@@ -50,7 +50,7 @@ cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_se
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# CSS
+# CSS con celdas cuadradas
 st.markdown(f"""
 <style>
 .grilla {{
@@ -58,9 +58,11 @@ st.markdown(f"""
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     margin-top: 30px;
+    justify-items: center;
 }}
 .sector {{
-    height: 130px;
+    aspect-ratio: 1 / 1;
+    width: 120px;
     border: 2px solid black;
     border-radius: 8px;
     background-color: #fefefe;
