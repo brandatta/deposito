@@ -32,15 +32,15 @@ if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Dropdown de código
+# Dropdown para seleccionar SKU
 codigos_disponibles = df['codigo'].dropna().unique()
 codigo_seleccionado = st.selectbox("Seleccioná un código:", codigos_disponibles)
 
-# Filtrar y agrupar cantidades por sector
+# Agrupar cantidad por sector
 df_filtrado = df[df['codigo'] == codigo_seleccionado]
 df_sector = df_filtrado.groupby('Sector', as_index=False)['cantidad'].sum()
 
-# Tomar 3 sectores fijos
+# Tomar los primeros 3 sectores para la grilla
 sectores_grilla = df['Sector'].dropna().unique()[:3]
 cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_sector.iterrows()}
 
@@ -48,37 +48,39 @@ cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_se
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# CSS ajustado
+# CSS ajustado con títulos dentro de las celdas
 st.markdown(f"""
 <style>
 .grilla {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 30px 20px;
-    margin-top: 40px;
+    gap: 25px;
+    margin-top: 30px;
     justify-items: center;
-    align-items: start;
 }}
+
 .sector {{
-    aspect-ratio: 1 / 1;
     width: 120px;
+    aspect-ratio: 1 / 1;
     border: 2px solid black;
     border-radius: 8px;
-    background-color: #fefefe;
-    position: relative;
+    background-color: #ffffff;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    box-sizing: border-box;
 }}
+
 .sector-label {{
-    position: absolute;
-    top: -22px;
-    left: 8px;
-    background-color: white;
     font-size: 13px;
     font-weight: bold;
-    padding: 0 6px;
+    text-align: center;
+    width: 100%;
+    margin-bottom: 6px;
 }}
+
 .cantidad-box {{
     width: 40px;
     height: 40px;
@@ -86,10 +88,10 @@ st.markdown(f"""
     background-color: {color_por_codigo(codigo_seleccionado)};
     color: white;
     font-weight: bold;
+    font-size: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
 }}
 </style>
 <div class="grilla">
@@ -101,7 +103,7 @@ for sector in sectores_grilla:
     html = f"""
     <div class="sector">
         <div class="sector-label">{sector}</div>
-        {"<div class='cantidad-box'>" + str(cantidad) + "</div>" if cantidad > 0 else ""}
+        <div class="cantidad-box">{cantidad if cantidad > 0 else "-"}</div>
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)
