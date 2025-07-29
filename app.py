@@ -3,11 +3,11 @@ import pandas as pd
 import mysql.connector
 import hashlib
 
-# Configuración general
+# Configuración
 st.set_page_config(page_title="Mapa del Depósito Visual", layout="wide")
 st.title("📦 Plano del Depósito con SKUs y cantidades")
 
-# Conexión a MySQL
+# Conexión
 def get_connection():
     return mysql.connector.connect(
         host=st.secrets["app_marco_new"]["host"],
@@ -27,105 +27,95 @@ def load_data():
 
 df = load_data()
 
-# Validación
+# Validar columnas
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Obtener sectores
+# Primeros 3 sectores
 sectores = df['Sector'].dropna().unique()[:3]
 df = df[df['Sector'].isin(sectores)]
+
+# Agrupar por sector y SKU
 df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
 
-# Color por SKU
+# Color único por código
 def color_por_codigo(codigo):
-    hash_object = hashlib.md5(codigo.encode())
-    return '#' + hash_object.hexdigest()[:6]
+    hex_color = hashlib.md5(codigo.encode()).hexdigest()[:6]
+    return f"#{hex_color}"
 
 # Estado inicial
 if 'sku_seleccionado' not in st.session_state:
     st.session_state['sku_seleccionado'] = None
     st.session_state['sector_seleccionado'] = None
 
-# CSS
+# Estilos básicos
 st.markdown("""
 <style>
-.grilla {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 15px;
-    margin-top: 20px;
-    justify-items: center;
-}
-.sector {
-    width: 120px;
-    height: 120px;
+.sector-box {
     border: 2px solid black;
     border-radius: 6px;
-    padding: 8px 5px 5px 5px;
     background-color: white;
+    padding: 10px;
+    width: 130px;
+    height: 130px;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
     align-items: center;
 }
-.sector-label {
+.sku-button {
+    border: none;
+    color: white;
     font-weight: bold;
     font-size: 13px;
-    margin-bottom: 6px;
-    text-align: center;
-    width: 100%;
-}
-.sku-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    margin: 2px;
+    cursor: pointer;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Render grilla
-st.markdown('<div class="grilla">', unsafe_allow_html=True)
-
-for sector in sectores:
+# Grilla de sectores
+cols = st.columns(len(sectores))
+for i, sector in enumerate(sectores):
     grupo = df_grouped[df_grouped['Sector'] == sector]
 
-    st.markdown(f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">', unsafe_allow_html=True)
+    with cols[i]:
+        st.markdown(f'<div class="sector-box"><div style="font-weight:bold; font-size:13px; margin-bottom:6px;">{sector}</div>', unsafe_allow_html=True)
 
-    # Cuadraditos como botones nativos dentro del contenedor
-    for _, row in grupo.iterrows():
-        color = color_por_codigo(str(row['codigo']))
-        cantidad = int(row['cantidad'])
-        button_key = f"{sector}_{row['codigo']}"
-        button_clicked = st.button(
-            label=str(cantidad),
-            key=button_key,
-            help=f"SKU: {row['codigo']}",
-        )
-        st.markdown(f"""
-        <style>
-        [data-testid="baseButton-secondary-{button_key}"] {{
-            background-color: {color};
-            width: 40px;
-            height: 40px;
-            border-radius: 4px;
-            border: none;
-            color: white;
-            font-weight: bold;
-            font-size: 13px;
-            padding: 0;
-            margin: 0;
-        }}
-        </style>
-        """, unsafe_allow_html=True)
+        # Cuadraditos SKU como botones
+        for _, row in grupo.iterrows():
+            color = color_por_codigo(str(row['codigo']))
+            button_label = str(int(row['cantidad']))
+            button_key = f"{sector}_{row['codigo']}"
+            if st.button(button_label, key=button_key):
+                st.session_state['sku_seleccionado'] = row['codigo']
+                st.session_state['sector_seleccionado'] = sector
+            st.markdown(
+                f"""
+                <style>
+                [data-testid="baseButton-secondary"]#{button_key} {{
+                    background-color: {color} !important;
+                    color: white !important;
+                    width: 40px !important;
+                    height: 40px !important;
+                    border-radius: 4px !important;
+                    margin: 2px;
+                }}
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
 
-        if button_clicked:
-            st.session_state['sku_seleccionado'] = row['codigo']
-            st.session_state['sector_seleccionado'] = sector
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('</div></div>', unsafe_allow_html=True)
+# Mostrar detalle si se hizo clic
+sku = st.session_state.get('sku_seleccionado')
+sector = st.session_state.get('sector_seleccionado')
 
-st.markdown('</div>', unsafe_allow_html=True)
-
-#
+if sku and sector:
+    st.markdown(f"### 🔍 Registros para SKU **{sku}** en sector **{sector}**")
+    registros = df[(df['Sector'] == sector) & (df['codigo'] == sku)]
+    st.dataframe(registros.reset_index(drop=True), use_container_width=True)
