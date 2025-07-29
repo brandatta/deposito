@@ -30,12 +30,12 @@ def load_data():
 df = load_data()
 
 # Validar columnas necesarias
-if not {'sector', 'cantidad', 'codigo'}.issubset(df.columns):
-    st.error("La tabla debe tener las columnas: sector, cantidad, codigo")
+if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
+    st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
 # Agrupar por sector (sumar cantidad)
-df_agg = df.groupby('sector', as_index=False).agg({'cantidad': 'sum'})
+df_agg = df.groupby('Sector', as_index=False).agg({'cantidad': 'sum'})
 
 # Crear una grilla visual
 st.subheader("🗺️ Grilla del depósito")
