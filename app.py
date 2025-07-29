@@ -3,7 +3,7 @@ import pandas as pd
 import mysql.connector
 import hashlib
 
-# Configuración general
+# Configuración
 st.set_page_config(page_title="Mapa del Depósito Visual", layout="wide")
 st.title("📦 Plano del Depósito con SKUs y cantidades")
 
@@ -27,32 +27,32 @@ def load_data():
 
 df = load_data()
 
-# Validación de columnas
+# Validación
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Filtrar primeros 3 sectores únicos
+# Primeros 3 sectores únicos
 sectores = df['Sector'].dropna().unique()[:3]
 df = df[df['Sector'].isin(sectores)]
 
-# Agrupar por sector y sku, sumando cantidades
+# Agrupación
 df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
 
-# Colores únicos por SKU
+# Color único por SKU
 def color_por_codigo(codigo):
     hash_object = hashlib.md5(codigo.encode())
     return '#' + hash_object.hexdigest()[:6]
 
-# CSS: sectores más chicos, SKUs se mantienen grandes
+# Estilos CSS
 st.markdown("""
 <style>
 .grilla {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, 120px);
     gap: 10px;
+    justify-content: center;
     margin-top: 20px;
-    justify-items: center;
 }
 .sector {
     width: 120px;
@@ -97,7 +97,7 @@ st.markdown("""
 <div class="grilla">
 """, unsafe_allow_html=True)
 
-# Renderizar cada sector cuadrado
+# Renderizar sectores horizontalmente
 for sector in sectores:
     grupo = df_grouped[df_grouped['Sector'] == sector]
     html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
