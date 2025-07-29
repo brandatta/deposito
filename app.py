@@ -32,91 +32,89 @@ if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Filtrar primeros 3 sectores únicos
+# Tomar primeros 3 sectores únicos para demo
 sectores = df['Sector'].dropna().unique()[:3]
 df = df[df['Sector'].isin(sectores)]
 
-# Agrupar por sector y SKU
+# Agrupar por sector y código
 df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
 
-# Colores únicos por SKU
+# Función para color único por SKU
 def color_por_codigo(codigo):
     return "#" + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# Inicializar estado
-if 'sku_seleccionado' not in st.session_state:
-    st.session_state['sku_seleccionado'] = None
-    st.session_state['sector_seleccionado'] = None
+# Leer parámetros de selección desde URL
+params = st.query_params
+sku_sel = params.get("sku", [None])[0]
+sector_sel = params.get("sector", [None])[0]
 
-# CSS básico
+# CSS
 st.markdown("""
-    <style>
-    .sector-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        border: 2px solid black;
-        border-radius: 8px;
-        padding: 10px;
-        width: 140px;
-        height: 140px;
-        margin: 10px;
-        background-color: white;
-    }
-    .sector-title {
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
-    .sku-button {
-        width: 36px;
-        height: 36px;
-        border-radius: 4px;
-        border: none;
-        font-weight: bold;
-        font-size: 13px;
-        margin: 2px;
-        color: white;
-    }
-    </style>
+<style>
+.grilla {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 20px;
+}
+.sector {
+    border: 2px solid black;
+    border-radius: 6px;
+    background-color: white;
+    padding: 8px;
+    height: 160px;
+    position: relative;
+}
+.sector-label {
+    position: absolute;
+    top: -14px;
+    left: 8px;
+    background-color: white;
+    padding: 0 5px;
+    font-weight: bold;
+    font-size: 13px;
+}
+.sku-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 18px;
+    justify-content: flex-start;
+}
+.sku {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-decoration: none;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# Mostrar sectores en una grilla
-cols = st.columns(len(sectores))
+# Dibujar la grilla de sectores
+st.markdown('<div class="grilla">', unsafe_allow_html=True)
 
-for idx, sector in enumerate(sectores):
-    with cols[idx]:
-        st.markdown('<div class="sector-container">', unsafe_allow_html=True)
-        st.markdown(f'<div class="sector-title">{sector}</div>', unsafe_allow_html=True)
+for sector in sectores:
+    grupo = df_grouped[df_grouped['Sector'] == sector]
+    html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
+    for _, row in grupo.iterrows():
+        color = color_por_codigo(str(row['codigo']))
+        cantidad = int(row['cantidad'])
+        sku = row["codigo"]
+        url = f"?sku={sku}&sector={sector}"
+        html += f'<a class="sku" href="{url}" style="background-color:{color};" title="{sku}">{cantidad}</a>'
+    html += '</div></div>'
+    st.markdown(html, unsafe_allow_html=True)
 
-        grupo = df_grouped[df_grouped['Sector'] == sector]
-        # Mostrar botones para cada SKU
-        for _, row in grupo.iterrows():
-            color = color_por_codigo(row['codigo'])
-            cantidad = int(row['cantidad'])
-            btn_key = f"{sector}_{row['codigo']}"
+st.markdown("</div>", unsafe_allow_html=True)
 
-            # Usar botones reales de Streamlit
-            if st.button(str(cantidad), key=btn_key):
-                st.session_state['sku_seleccionado'] = row['codigo']
-                st.session_state['sector_seleccionado'] = sector
-
-            # Aplicar color al último botón creado (sí, con CSS scoped)
-            st.markdown(f"""
-                <style>
-                button[data-testid="baseButton-secondary"]#{btn_key} {{
-                    background-color: {color} !important;
-                    color: white !important;
-                }}
-                </style>
-            """, unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-# Mostrar detalle si hay selección
-sku = st.session_state['sku_seleccionado']
-sector = st.session_state['sector_seleccionado']
-
-if sku and sector:
-    st.markdown(f"### 🔍 Registros para SKU **{sku}** en sector **{sector}**")
-    registros = df[(df['Sector'] == sector) & (df['codigo'] == sku)]
-    st.dataframe(registros.reset_index(drop=True), use_container_width=True)
+# Mostrar detalles si hay selección
+if sku_sel and sector_sel:
+    st.markdown(f"### 🔍 Registros para SKU **{sku_sel}** en sector **{sector_sel}**")
+    detalle = df[(df["Sector"] == sector_sel) & (df["codigo"] == sku_sel)]
+    st.dataframe(detalle.reset_index(drop=True), use_container_width=True)
