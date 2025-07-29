@@ -32,33 +32,32 @@ if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Selección de código
+# Dropdown de código
 codigos_disponibles = df['codigo'].dropna().unique()
 codigo_seleccionado = st.selectbox("Seleccioná un código:", codigos_disponibles)
 
-# Filtrar y agrupar por sector
+# Filtrar y agrupar cantidades por sector
 df_filtrado = df[df['codigo'] == codigo_seleccionado]
 df_sector = df_filtrado.groupby('Sector', as_index=False)['cantidad'].sum()
 
-# Obtener los primeros 3 sectores únicos (fijos en la grilla)
+# Tomar 3 sectores fijos
 sectores_grilla = df['Sector'].dropna().unique()[:3]
-
-# Crear diccionario de cantidades por sector
 cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_sector.iterrows()}
 
 # Función para color único por código
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# CSS con celdas cuadradas
+# CSS ajustado
 st.markdown(f"""
 <style>
 .grilla {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    margin-top: 30px;
+    gap: 30px 20px;
+    margin-top: 40px;
     justify-items: center;
+    align-items: start;
 }}
 .sector {{
     aspect-ratio: 1 / 1;
@@ -73,7 +72,7 @@ st.markdown(f"""
 }}
 .sector-label {{
     position: absolute;
-    top: -16px;
+    top: -22px;
     left: 8px;
     background-color: white;
     font-size: 13px;
@@ -96,7 +95,7 @@ st.markdown(f"""
 <div class="grilla">
 """, unsafe_allow_html=True)
 
-# Mostrar cada sector en la grilla
+# Dibujar grilla
 for sector in sectores_grilla:
     cantidad = cantidades_por_sector.get(sector, 0)
     html = f"""
