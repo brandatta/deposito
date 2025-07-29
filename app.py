@@ -68,17 +68,19 @@ st.markdown(f"""
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    padding: 8px;
+    justify-content: center;
+    position: relative;
     box-sizing: border-box;
 }}
 
 .sector-label {{
+    position: absolute;
+    top: 6px;
     font-size: 13px;
     font-weight: bold;
     text-align: center;
-    width: 100%;
-    margin-bottom: 6px;
+    background-color: white;
+    padding: 0 4px;
 }}
 
 .cantidad-box {{
