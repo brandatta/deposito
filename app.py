@@ -32,24 +32,32 @@ if not {'Sector', 'cantidad', 'codigo', 'descripcion'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo, descripcion")
     st.stop()
 
-# Estado del modal
-if "sku_modal" not in st.session_state:
-    st.session_state.sku_modal = None
-if "sector_modal" not in st.session_state:
-    st.session_state.sector_modal = None
-
-# Tomar primeros 3 sectores únicos
+# Filtrar primeros 3 sectores únicos
 sectores = df['Sector'].dropna().unique()[:3]
 df = df[df['Sector'].isin(sectores)]
 
-# Agrupar
+# Agrupar por sector y sku, sumando cantidades
 df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
 
-# Función para color SKU
+# Función para color único por SKU
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# Mostrar estilos
+# Estado para modal
+if "show_modal" not in st.session_state:
+    st.session_state.show_modal = False
+if "selected_sku" not in st.session_state:
+    st.session_state.selected_sku = None
+if "selected_sector" not in st.session_state:
+    st.session_state.selected_sector = None
+
+# Callback al hacer clic
+def mostrar_modal(sku, sector):
+    st.session_state.selected_sku = sku
+    st.session_state.selected_sector = sector
+    st.session_state.show_modal = True
+
+# CSS para estilo
 st.markdown("""
 <style>
 .grilla {
@@ -64,101 +72,95 @@ st.markdown("""
     border: 2px solid black;
     border-radius: 6px;
     background-color: white;
-    padding: 5px;
-    position: relative;
+    padding: 6px;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
     align-items: center;
 }
 .sector-label {
-    position: absolute;
-    top: -14px;
-    left: 6px;
-    background-color: white;
-    padding: 0 5px;
-    font-size: 12px;
     font-weight: bold;
+    font-size: 13px;
+    margin-bottom: 6px;
 }
 .sku-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 6px;
     justify-content: center;
-    margin-top: 20px;
 }
-.sku-btn {
-    width: 36px;
-    height: 36px;
+.sku-button {
+    width: 38px;
+    height: 38px;
     border-radius: 4px;
+    border: none;
     font-weight: bold;
     font-size: 13px;
     color: white;
-    border: none;
     cursor: pointer;
 }
 .modal-overlay {
     position: fixed;
     top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85);
+    width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.75);
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     z-index: 9999;
 }
-.modal-content {
-    background: white;
+.modal {
+    background-color: white;
     padding: 20px;
-    border-radius: 8px;
+    width: 80%;
     max-height: 80%;
-    max-width: 500px;
     overflow-y: auto;
+    border-radius: 10px;
     position: relative;
 }
-.modal-close {
+.close-button {
     position: absolute;
     top: 8px;
     right: 12px;
-    font-size: 22px;
+    font-size: 20px;
+    color: black;
     cursor: pointer;
-    font-weight: bold;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Mostrar grilla
+# Dibujar grilla
 st.markdown('<div class="grilla">', unsafe_allow_html=True)
 for sector in sectores:
-    html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
-    grupo = df_grouped[df_grouped["Sector"] == sector]
-    for _, row in grupo.iterrows():
-        color = color_por_codigo(row["codigo"])
-        sku = row["codigo"]
-        cantidad = int(row["cantidad"])
-        btn_key = f"{sector}_{sku}"
-        if st.button(f"{cantidad}", key=btn_key):
-            st.session_state.sku_modal = sku
-            st.session_state.sector_modal = sector
-        html += f'<button class="sku-btn" style="background-color:{color};" disabled>{cantidad}</button>'
-    html += '</div></div>'
-    st.markdown(html, unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
+    grupo = df_grouped[df_grouped['Sector'] == sector]
+    with st.container():
+        st.markdown(f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">', unsafe_allow_html=True)
+        for _, row in grupo.iterrows():
+            color = color_por_codigo(str(row['codigo']))
+            cantidad = int(row['cantidad'])
+            sku_key = f"sku_{sector}_{row['codigo']}"
+            if st.button(f"{cantidad}", key=sku_key):
+                mostrar_modal(row['codigo'], sector)
+            st.markdown(
+                f'<style>#{sku_key}{{background-color:{color} !important;}}</style>',
+                unsafe_allow_html=True,
+            )
+        st.markdown('</div></div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
-# Mostrar modal si hay selección
-if st.session_state.sku_modal and st.session_state.sector_modal:
-    sku = st.session_state.sku_modal
-    sector = st.session_state.sector_modal
-    detalle = df[(df["codigo"] == sku) & (df["Sector"] == sector)]
+# Mostrar modal si corresponde
+if st.session_state.show_modal:
+    sku = st.session_state.selected_sku
+    sector = st.session_state.selected_sector
+    detalle = df[(df["Sector"] == sector) & (df["codigo"] == sku)]
 
-    st.markdown(f"""
-    <div class="modal-overlay" onclick="window.location.reload()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-close" onclick="window.location.reload()">×</div>
-            <h4>📦 Registros para <b>{sku}</b> en sector <b>{sector}</b></h4>
-            <ul>
-                {''.join(f"<li>{r}</li>" for r in detalle['descripcion'])}
-            </ul>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Mostrar modal
+    st.markdown("""
+    <div class="modal-overlay">
+        <div class="modal">
+            <div class="close-button" onclick="window.location.href=window.location.href">×</div>
+            <h4>📦 Registros para SKU <b>%s</b> en sector <b>%s</b></h4>
+    """ % (sku, sector), unsafe_allow_html=True)
+
+    st.dataframe(detalle[['descripcion']].reset_index(drop=True), use_container_width=True)
+
+    st.markdown("</div></div>", unsafe_allow_html=True)
