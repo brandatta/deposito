@@ -109,7 +109,7 @@ for sector in sectores:
         cantidad = int(row['cantidad'])
         key = f"{sector}__{row['codigo']}"
         html += f"""
-            <form method="post">
+            <form action="" method="get">
                 <button class="sku-button" name="clicked" value="{key}" style="background-color:{color};" title="{row['codigo']}">
                     {cantidad}
                 </button>
@@ -120,20 +120,18 @@ for sector in sectores:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Captura del clic
-if st.session_state.get("form_submitted") is None:
-    st.session_state["form_submitted"] = False
-
-# Detectar clic en el botón (simulado a través de query param con workaround)
-clicked = st.experimental_get_query_params().get("clicked")
+# Capturar clic desde query params (usando st.query_params)
+clicked = st.query_params.get("clicked")
 if clicked:
     key = clicked[0]
-    sector_clicked, sku_clicked = key.split('__')
+    sector_clicked, sku_clicked = key.split("__")
     st.session_state['sku_seleccionado'] = sku_clicked
     st.session_state['sector_seleccionado'] = sector_clicked
-    st.experimental_set_query_params()  # limpiar la URL para evitar repetición
 
-# Mostrar detalle si se hizo clic
+    # Limpiar los query params luego de usar
+    st.query_params.clear()
+
+# Mostrar detalle si hay selección
 sku = st.session_state.get('sku_seleccionado')
 sector = st.session_state.get('sector_seleccionado')
 
