@@ -32,19 +32,24 @@ if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Filtrar primeros 3 sectores únicos
+# Primeros 3 sectores únicos
 sectores = df['Sector'].dropna().unique()[:3]
 df = df[df['Sector'].isin(sectores)]
 
-# Agrupar por sector y sku, sumando cantidades
+# Agrupar por sector y SKU, sumando cantidades
 df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
 
-# Función para color único por SKU
+# Función para asignar color único por SKU
 def color_por_codigo(codigo):
     hash_object = hashlib.md5(codigo.encode())
     return '#' + hash_object.hexdigest()[:6]
 
-# CSS y estructura HTML
+# Estado inicial
+if 'sku_seleccionado' not in st.session_state:
+    st.session_state['sku_seleccionado'] = None
+    st.session_state['sector_seleccionado'] = None
+
+# CSS y estructura visual
 st.markdown("""
 <style>
 .grilla {
@@ -80,30 +85,59 @@ st.markdown("""
     overflow-y: auto;
     justify-content: center;
 }
-.sku {
+.sku-button {
     width: 40px;
     height: 40px;
     border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border: none;
     font-weight: bold;
     font-size: 13px;
     color: white;
+    cursor: pointer;
+    padding: 0;
 }
 </style>
 <div class="grilla">
 """, unsafe_allow_html=True)
 
-# Renderizar sectores
+# Renderizar sectores con SKUs clickeables
 for sector in sectores:
     grupo = df_grouped[df_grouped['Sector'] == sector]
     html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
     for _, row in grupo.iterrows():
         color = color_por_codigo(str(row['codigo']))
         cantidad = int(row['cantidad'])
-        html += f'<div class="sku" style="background-color:{color};" title="{row["codigo"]}">{cantidad}</div>'
+        key = f"{sector}__{row['codigo']}"
+        html += f"""
+            <form method="post">
+                <button class="sku-button" name="clicked" value="{key}" style="background-color:{color};" title="{row['codigo']}">
+                    {cantidad}
+                </button>
+            </form>
+        """
     html += '</div></div>'
     st.markdown(html, unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
+
+# Captura del clic
+if st.session_state.get("form_submitted") is None:
+    st.session_state["form_submitted"] = False
+
+# Detectar clic en el botón (simulado a través de query param con workaround)
+clicked = st.experimental_get_query_params().get("clicked")
+if clicked:
+    key = clicked[0]
+    sector_clicked, sku_clicked = key.split('__')
+    st.session_state['sku_seleccionado'] = sku_clicked
+    st.session_state['sector_seleccionado'] = sector_clicked
+    st.experimental_set_query_params()  # limpiar la URL para evitar repetición
+
+# Mostrar detalle si se hizo clic
+sku = st.session_state.get('sku_seleccionado')
+sector = st.session_state.get('sector_seleccionado')
+
+if sku and sector:
+    st.markdown(f"### 🔍 Registros para SKU **{sku}** en sector **{sector}**")
+    registros = df[(df['Sector'] == sector) & (df['codigo'] == sku)]
+    st.dataframe(registros.reset_index(drop=True), use_container_width=True)
