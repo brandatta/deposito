@@ -1,5 +1,50 @@
-# ... tu código Python hasta CSS igual ...
+import streamlit as st
+import pandas as pd
+import mysql.connector
+import hashlib
 
+# Configuración general
+st.set_page_config(page_title="Mapa del Depósito Visual", layout="wide")
+st.title("📦 Plano del Depósito con SKUs y cantidades")
+
+# Conexión MySQL
+def get_connection():
+    return mysql.connector.connect(
+        host=st.secrets["app_marco_new"]["host"],
+        user=st.secrets["app_marco_new"]["user"],
+        password=st.secrets["app_marco_new"]["password"],
+        database=st.secrets["app_marco_new"]["database"],
+        port=3306,
+    )
+
+# Cargar datos
+@st.cache_data
+def load_data():
+    conn = get_connection()
+    df = pd.read_sql("SELECT * FROM mapa_deposito", conn)
+    conn.close()
+    return df
+
+df = load_data()
+
+# Validación de columnas
+if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
+    st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
+    st.stop()
+
+# Filtrar primeros 3 sectores únicos
+sectores = df['Sector'].dropna().unique()[:3]
+df = df[df['Sector'].isin(sectores)]
+
+# Agrupar por sector y sku, sumando cantidades
+df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
+
+# Función para color único por SKU
+def color_por_codigo(codigo):
+    hash_object = hashlib.md5(codigo.encode())
+    return '#' + hash_object.hexdigest()[:6]
+
+# CSS y estructura HTML
 st.markdown("""
 <style>
 .grilla {
@@ -50,7 +95,7 @@ st.markdown("""
 <div class="grilla">
 """, unsafe_allow_html=True)
 
-# Renderizado igual, pero sector-label ya se ve bien
+# Renderizar sectores
 for sector in sectores:
     grupo = df_grouped[df_grouped['Sector'] == sector]
     html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
