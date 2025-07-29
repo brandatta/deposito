@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 import mysql.connector
 
-# Configuración
+# Configuración general
 st.set_page_config(page_title="Mapa del Depósito", layout="wide")
-st.title("📦 Mapa visual del Depósito")
+st.title("📦 Plano del Depósito - 1 Fila x 3 Columnas")
 
-# Conexión a MySQL
+# Conexión MySQL
 def get_connection():
     return mysql.connector.connect(
         host=st.secrets["app_marco_new"]["host"],
@@ -20,51 +20,69 @@ def get_connection():
 @st.cache_data
 def load_data():
     conn = get_connection()
-    query = "SELECT * FROM mapa_deposito"
-    df = pd.read_sql(query, conn)
+    df = pd.read_sql("SELECT * FROM mapa_deposito", conn)
     conn.close()
     return df
 
 df = load_data()
 
-# Verificar columnas necesarias
+# Validación de columnas
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Agrupar por sector
+# Agrupar y preparar resumen por sector
 df_summary = df.groupby('Sector').agg({
     'cantidad': 'sum',
     'codigo': lambda x: ', '.join(sorted(set(map(str, x))))
 }).reset_index()
 
-# Seleccionar los sectores que van en la grilla fija (1 fila x 3 columnas)
-# Podés reemplazar estos valores por los nombres reales que quieras mostrar
+# Definir los sectores para la grilla (orden fijo)
 sectores_en_grilla = ["ZONA 1", "ZONA 2", "FALLADO MUNRO"]
-
-# Filtrar solo esos sectores
 df_grilla = df_summary[df_summary['Sector'].isin(sectores_en_grilla)]
-
-# Asegurarse de mantener el orden deseado
 df_grilla = df_grilla.set_index('Sector').reindex(sectores_en_grilla).reset_index()
 
-# Crear la grilla de 1 fila y 3 columnas
-cols = st.columns(3)
+# Mostrar como tabla estilizada (sin colores de fondo llamativos)
+st.markdown("""
+<style>
+    .grilla {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        border: 2px solid black;
+        margin-top: 20px;
+    }
+    .celda {
+        border: 1px solid black;
+        padding: 15px;
+        text-align: center;
+        font-family: sans-serif;
+    }
+    .titulo {
+        font-weight: bold;
+        font-size: 16px;
+    }
+    .cantidad {
+        margin-top: 5px;
+        font-size: 14px;
+    }
+    .codigo {
+        margin-top: 5px;
+        font-size: 12px;
+    }
+</style>
+<div class="grilla">
+""", unsafe_allow_html=True)
 
-for i, row in enumerate(df_grilla.itertuples()):
-    with cols[i]:
-        st.markdown(f"""
-            <div style="
-                border: 2px solid #ccc;
-                border-radius: 10px;
-                padding: 15px;
-                margin: 10px 0;
-                background-color: #f0f8ff;
-                text-align: center;
-                min-height: 120px;
-            ">
-                <h5 style="margin-bottom: 5px;">📍 {row.Sector}</h5>
-                <p style="margin: 5px 0;"><strong>Cantidad total:</strong> {row.cantidad}</p>
-                <p style="margin: 5px 0; font-size: 12px;"><strong>Productos:</strong><br>{row.codigo}</p>
-            </div>
-        """, unsafe_allow_html=True)
+# Renderizar cada celda
+for _, row in df_grilla.iterrows():
+    st.markdown(f"""
+    <div class="celda">
+        <div class="titulo">{row['Sector']}</div>
+        <div class="cantidad">Cantidad: {int(row['cantidad'])}</div>
+        <div class="codigo">Códigos:<br>{row['codigo']}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Cerrar contenedor
+st.markdown("</div>", unsafe_allow_html=True)
