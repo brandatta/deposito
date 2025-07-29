@@ -53,6 +53,10 @@ def parse_sector(sector):
 # Aplicar conversión
 df_agg[['fila', 'col']] = df_agg['sector'].apply(lambda s: pd.Series(parse_sector(s)))
 
+# Filtrar sectores válidos
+df_agg = df_agg.dropna(subset=['fila', 'col'])
+df_agg[['fila', 'col']] = df_agg[['fila', 'col']].astype(int)
+
 # Definir dimensiones máximas de la grilla
 max_fila = df_agg['fila'].max()
 max_col = df_agg['col'].max()
@@ -62,8 +66,7 @@ matriz = np.full((max_fila + 1, max_col + 1), '', dtype=object)
 
 # Rellenar la matriz con cantidades
 for _, row in df_agg.iterrows():
-    if pd.notna(row['fila']) and pd.notna(row['col']):
-        matriz[int(row['fila']), int(row['col'])] = str(int(row['cantidad']))
+    matriz[row['fila'], row['col']] = str(int(row['cantidad']))
 
 # Mostrar como tabla
 st.subheader("🗺️ Grilla del depósito")
