@@ -1,10 +1,12 @@
 import streamlit as st
 import pandas as pd
 import mysql.connector
+import random
+import hashlib
 
 # Configuración general
 st.set_page_config(page_title="Mapa del Depósito", layout="wide")
-st.title("📦 Plano del Depósito - 1 Fila x 3 Columnas")
+st.title("📦 Plano del Depósito Visual")
 
 # Conexión MySQL
 def get_connection():
@@ -26,65 +28,73 @@ def load_data():
 
 df = load_data()
 
-# Validación
+# Validación de columnas
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Agrupar por sector y mostrar los primeros 3 únicos
-df_summary = df.groupby('Sector').agg({
-    'cantidad': 'sum',
-    'codigo': lambda x: ', '.join(sorted(set(map(str, x))))
-}).reset_index()
+# Limitar a los primeros 3 sectores
+sectores = df['Sector'].unique()[:3]
+df = df[df['Sector'].isin(sectores)]
 
-# Tomar los primeros 3 sectores reales de la tabla
-df_grilla = df_summary.head(3)
+# Asignar un color único por código
+def color_por_codigo(codigo):
+    hash_object = hashlib.md5(codigo.encode())
+    hex_color = '#' + hash_object.hexdigest()[:6]
+    return hex_color
 
-# HTML para formato grilla limpia
+# Agrupar por sector
+df_grouped = df.groupby('Sector')
+
+# HTML y CSS para grilla
 st.markdown("""
 <style>
-    .grilla {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        border: 2px solid black;
-        margin-top: 20px;
-    }
-    .celda {
-        border: 1px solid black;
-        padding: 15px;
-        text-align: center;
-        font-family: sans-serif;
-        background-color: #fff;
-    }
-    .titulo {
-        font-weight: bold;
-        font-size: 16px;
-    }
-    .cantidad {
-        margin-top: 5px;
-        font-size: 14px;
-    }
-    .codigo {
-        margin-top: 5px;
-        font-size: 12px;
-    }
+.grilla {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 20px;
+}
+.sector {
+    border: 2px solid black;
+    border-radius: 8px;
+    height: 200px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: flex-start;
+    padding: 8px;
+    position: relative;
+    background-color: #fff;
+}
+.codigo {
+    width: 20px;
+    height: 20px;
+    margin: 2px;
+    border-radius: 3px;
+}
+.sector-label {
+    position: absolute;
+    top: 5px;
+    left: 8px;
+    font-weight: bold;
+    background: white;
+    padding: 2px 6px;
+    font-size: 13px;
+    z-index: 1;
+}
 </style>
 <div class="grilla">
 """, unsafe_allow_html=True)
 
-# Renderizar cada celda sin errores si hay datos faltantes
-for _, row in df_grilla.iterrows():
-    sector = row['Sector'] if pd.notna(row['Sector']) else 'Sin nombre'
-    cantidad = int(row['cantidad']) if pd.notna(row['cantidad']) else 0
-    codigos = row['codigo'] if pd.notna(row['codigo']) and row['codigo'] else 'Sin productos'
+# Render de cada sector como cuadrado visual
+for sector, grupo in df_grouped:
+    codigos = grupo['codigo'].unique()
+    html = f'<div class="sector"><div class="sector-label">{sector}</div>'
+    for cod in codigos:
+        color = color_por_codigo(str(cod))
+        html += f'<div class="codigo" style="background-color:{color};" title="{cod}"></div>'
+    html += '</div>'
+    st.markdown(html, unsafe_allow_html=True)
 
-    st.markdown(f"""
-    <div class="celda">
-        <div class="titulo">{sector}</div>
-        <div class="cantidad">Cantidad: {cantidad}</div>
-        <div class="codigo">Códigos:<br>{codigos}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# Cerrar contenedor
 st.markdown("</div>", unsafe_allow_html=True)
