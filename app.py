@@ -26,29 +26,26 @@ def load_data():
 
 df = load_data()
 
-# Validación de columnas
+# Validación
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Agrupar y preparar resumen por sector
+# Agrupar por sector y mostrar los primeros 3 únicos
 df_summary = df.groupby('Sector').agg({
     'cantidad': 'sum',
     'codigo': lambda x: ', '.join(sorted(set(map(str, x))))
 }).reset_index()
 
-# Definir los sectores para la grilla (orden fijo)
-sectores_en_grilla = ["ZONA 1", "ZONA 2", "FALLADO MUNRO"]
-df_grilla = df_summary[df_summary['Sector'].isin(sectores_en_grilla)]
-df_grilla = df_grilla.set_index('Sector').reindex(sectores_en_grilla).reset_index()
+# Tomar los primeros 3 sectores reales de la tabla
+df_grilla = df_summary.head(3)
 
-# Mostrar como tabla estilizada (sin colores de fondo llamativos)
+# HTML para formato grilla limpia
 st.markdown("""
 <style>
     .grilla {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 0;
         border: 2px solid black;
         margin-top: 20px;
     }
@@ -57,6 +54,7 @@ st.markdown("""
         padding: 15px;
         text-align: center;
         font-family: sans-serif;
+        background-color: #fff;
     }
     .titulo {
         font-weight: bold;
@@ -74,13 +72,17 @@ st.markdown("""
 <div class="grilla">
 """, unsafe_allow_html=True)
 
-# Renderizar cada celda
+# Renderizar cada celda sin errores si hay datos faltantes
 for _, row in df_grilla.iterrows():
+    sector = row['Sector'] if pd.notna(row['Sector']) else 'Sin nombre'
+    cantidad = int(row['cantidad']) if pd.notna(row['cantidad']) else 0
+    codigos = row['codigo'] if pd.notna(row['codigo']) and row['codigo'] else 'Sin productos'
+
     st.markdown(f"""
     <div class="celda">
-        <div class="titulo">{row['Sector']}</div>
-        <div class="cantidad">Cantidad: {int(row['cantidad'])}</div>
-        <div class="codigo">Códigos:<br>{row['codigo']}</div>
+        <div class="titulo">{sector}</div>
+        <div class="cantidad">Cantidad: {cantidad}</div>
+        <div class="codigo">Códigos:<br>{codigos}</div>
     </div>
     """, unsafe_allow_html=True)
 
