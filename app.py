@@ -5,7 +5,7 @@ import hashlib
 
 # Configuración general
 st.set_page_config(page_title="Mapa del Depósito Visual", layout="wide")
-st.title("📦 Plano del Depósito con SKUs y cantidades")
+st.title("📦 Plano del Depósito (por SKU)")
 
 # Conexión MySQL
 def get_connection():
@@ -28,139 +28,81 @@ def load_data():
 df = load_data()
 
 # Validación de columnas
-if not {'Sector', 'cantidad', 'codigo', 'descripcion'}.issubset(df.columns):
-    st.error("La tabla debe tener las columnas: Sector, cantidad, codigo, descripcion")
+if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
+    st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Filtrar primeros 3 sectores únicos
-sectores = df['Sector'].dropna().unique()[:3]
-df = df[df['Sector'].isin(sectores)]
+# Selección de código
+codigos_disponibles = df['codigo'].dropna().unique()
+codigo_seleccionado = st.selectbox("Seleccioná un código:", codigos_disponibles)
 
-# Agrupar por sector y sku, sumando cantidades
-df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
+# Filtrar y agrupar por sector
+df_filtrado = df[df['codigo'] == codigo_seleccionado]
+df_sector = df_filtrado.groupby('Sector', as_index=False)['cantidad'].sum()
 
-# Función para color único por SKU
+# Obtener los primeros 3 sectores únicos (fijos en la grilla)
+sectores_grilla = df['Sector'].dropna().unique()[:3]
+
+# Crear diccionario de cantidades por sector
+cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_sector.iterrows()}
+
+# Función para color único por código
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# Estado para modal
-if "show_modal" not in st.session_state:
-    st.session_state.show_modal = False
-if "selected_sku" not in st.session_state:
-    st.session_state.selected_sku = None
-if "selected_sector" not in st.session_state:
-    st.session_state.selected_sector = None
-
-# Callback al hacer clic
-def mostrar_modal(sku, sector):
-    st.session_state.selected_sku = sku
-    st.session_state.selected_sector = sector
-    st.session_state.show_modal = True
-
-# CSS para estilo
-st.markdown("""
+# CSS
+st.markdown(f"""
 <style>
-.grilla {
+.grilla {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-top: 20px;
-}
-.sector {
-    width: 120px;
-    height: 120px;
+    gap: 20px;
+    margin-top: 30px;
+}}
+.sector {{
+    height: 130px;
     border: 2px solid black;
-    border-radius: 6px;
-    background-color: white;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-.sector-label {
-    font-weight: bold;
-    font-size: 13px;
-    margin-bottom: 6px;
-}
-.sku-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    justify-content: center;
-}
-.sku-button {
-    width: 38px;
-    height: 38px;
-    border-radius: 4px;
-    border: none;
-    font-weight: bold;
-    font-size: 13px;
-    color: white;
-    cursor: pointer;
-}
-.modal-overlay {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background-color: rgba(0, 0, 0, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-.modal {
-    background-color: white;
-    padding: 20px;
-    width: 80%;
-    max-height: 80%;
-    overflow-y: auto;
-    border-radius: 10px;
+    border-radius: 8px;
+    background-color: #fefefe;
     position: relative;
-}
-.close-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}}
+.sector-label {{
     position: absolute;
-    top: 8px;
-    right: 12px;
-    font-size: 20px;
-    color: black;
-    cursor: pointer;
-}
+    top: -16px;
+    left: 8px;
+    background-color: white;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 0 6px;
+}}
+.cantidad-box {{
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    background-color: {color_por_codigo(codigo_seleccionado)};
+    color: white;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}}
 </style>
+<div class="grilla">
 """, unsafe_allow_html=True)
 
-# Dibujar grilla
-st.markdown('<div class="grilla">', unsafe_allow_html=True)
-for sector in sectores:
-    grupo = df_grouped[df_grouped['Sector'] == sector]
-    with st.container():
-        st.markdown(f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">', unsafe_allow_html=True)
-        for _, row in grupo.iterrows():
-            color = color_por_codigo(str(row['codigo']))
-            cantidad = int(row['cantidad'])
-            sku_key = f"sku_{sector}_{row['codigo']}"
-            if st.button(f"{cantidad}", key=sku_key):
-                mostrar_modal(row['codigo'], sector)
-            st.markdown(
-                f'<style>#{sku_key}{{background-color:{color} !important;}}</style>',
-                unsafe_allow_html=True,
-            )
-        st.markdown('</div></div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+# Mostrar cada sector en la grilla
+for sector in sectores_grilla:
+    cantidad = cantidades_por_sector.get(sector, 0)
+    html = f"""
+    <div class="sector">
+        <div class="sector-label">{sector}</div>
+        {"<div class='cantidad-box'>" + str(cantidad) + "</div>" if cantidad > 0 else ""}
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
 
-# Mostrar modal si corresponde
-if st.session_state.show_modal:
-    sku = st.session_state.selected_sku
-    sector = st.session_state.selected_sector
-    detalle = df[(df["Sector"] == sector) & (df["codigo"] == sku)]
-
-    # Mostrar modal
-    st.markdown("""
-    <div class="modal-overlay">
-        <div class="modal">
-            <div class="close-button" onclick="window.location.href=window.location.href">×</div>
-            <h4>📦 Registros para SKU <b>%s</b> en sector <b>%s</b></h4>
-    """ % (sku, sector), unsafe_allow_html=True)
-
-    st.dataframe(detalle[['descripcion']].reset_index(drop=True), use_container_width=True)
-
-    st.markdown("</div></div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
