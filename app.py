@@ -3,7 +3,7 @@ import pandas as pd
 import mysql.connector
 import hashlib
 
-# Configuración general
+# Configuración
 st.set_page_config(page_title="Mapa del Depósito Visual", layout="wide")
 st.title("📦 Plano del Depósito con SKUs y cantidades")
 
@@ -27,19 +27,19 @@ def load_data():
 
 df = load_data()
 
-# Validación de columnas
+# Validación
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Primeros 3 sectores únicos
+# Primeros 3 sectores
 sectores = df['Sector'].dropna().unique()[:3]
 df = df[df['Sector'].isin(sectores)]
 
-# Agrupar por sector y SKU, sumando cantidades
+# Agrupar
 df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
 
-# Función para asignar color único por SKU
+# Colores únicos por SKU
 def color_por_codigo(codigo):
     hash_object = hashlib.md5(codigo.encode())
     return '#' + hash_object.hexdigest()[:6]
@@ -49,7 +49,7 @@ if 'sku_seleccionado' not in st.session_state:
     st.session_state['sku_seleccionado'] = None
     st.session_state['sector_seleccionado'] = None
 
-# CSS y estructura visual
+# CSS
 st.markdown("""
 <style>
 .grilla {
@@ -82,7 +82,6 @@ st.markdown("""
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    overflow-y: auto;
     justify-content: center;
 }
 .sku-button {
@@ -97,41 +96,52 @@ st.markdown("""
     padding: 0;
 }
 </style>
-<div class="grilla">
 """, unsafe_allow_html=True)
 
-# Renderizar sectores con SKUs clickeables
+# Render grilla
+st.markdown('<div class="grilla">', unsafe_allow_html=True)
+
 for sector in sectores:
     grupo = df_grouped[df_grouped['Sector'] == sector]
-    html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
-    for _, row in grupo.iterrows():
-        color = color_por_codigo(str(row['codigo']))
-        cantidad = int(row['cantidad'])
-        key = f"{sector}__{row['codigo']}"
-        html += f"""
-            <form action="" method="get">
-                <button class="sku-button" name="clicked" value="{key}" style="background-color:{color};" title="{row['codigo']}">
-                    {cantidad}
-                </button>
-            </form>
-        """
-    html += '</div></div>'
-    st.markdown(html, unsafe_allow_html=True)
 
-st.markdown("</div>", unsafe_allow_html=True)
+    with st.container():
+        st.markdown(f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">', unsafe_allow_html=True)
 
-# Capturar clic desde query params (usando st.query_params)
-clicked = st.query_params.get("clicked")
-if clicked:
-    key = clicked[0]
-    sector_clicked, sku_clicked = key.split("__")
-    st.session_state['sku_seleccionado'] = sku_clicked
-    st.session_state['sector_seleccionado'] = sector_clicked
+        for _, row in grupo.iterrows():
+            color = color_por_codigo(str(row['codigo']))
+            cantidad = int(row['cantidad'])
+            form_key = f"form_{sector}_{row['codigo']}"
+            with st.form(key=form_key):
+                submit = st.form_submit_button(
+                    label=str(cantidad),
+                    help=f"SKU: {row['codigo']}",
+                    use_container_width=False
+                )
+                if submit:
+                    st.session_state['sku_seleccionado'] = row['codigo']
+                    st.session_state['sector_seleccionado'] = sector
+                st.markdown(f"""
+                <style>
+                [data-testid="stForm"] button {{
+                    background-color: {color};
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 4px;
+                    border: none;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 13px;
+                    padding: 0;
+                    margin: 0;
+                }}
+                </style>
+                """, unsafe_allow_html=True)
 
-    # Limpiar los query params luego de usar
-    st.query_params.clear()
+        st.markdown('</div></div>', unsafe_allow_html=True)
 
-# Mostrar detalle si hay selección
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Mostrar detalles si hay selección
 sku = st.session_state.get('sku_seleccionado')
 sector = st.session_state.get('sector_seleccionado')
 
