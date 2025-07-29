@@ -48,7 +48,7 @@ df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
 def color_por_codigo(codigo):
     return "#" + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# CSS y grilla
+# CSS para grilla y modal
 st.markdown("""
 <style>
 .grilla {
@@ -93,41 +93,31 @@ st.markdown("""
     color: white;
     text-decoration: none;
 }
-.overlay {
+.modal-box {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.modal {
-    background-color: white;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border: 2px solid #333;
+    border-radius: 10px;
     padding: 20px;
-    border-radius: 8px;
-    width: 600px;
+    z-index: 9999;
+    width: 80%;
+    max-width: 700px;
     max-height: 80vh;
     overflow-y: auto;
-    position: relative;
 }
-.close-btn {
-    position: absolute;
-    top: 8px;
-    right: 12px;
-    font-size: 20px;
-    font-weight: bold;
-    color: #999;
-    cursor: pointer;
+.modal-close {
+    text-align: right;
+    margin-bottom: 10px;
 }
 </style>
-<div class="grilla">
 """, unsafe_allow_html=True)
 
-# Renderizar sectores con SKUs
+# Renderizar grilla
+st.markdown('<div class="grilla">', unsafe_allow_html=True)
+
 for sector in sectores:
     grupo = df_grouped[df_grouped['Sector'] == sector]
     html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
@@ -145,17 +135,13 @@ st.markdown("</div>", unsafe_allow_html=True)
 # Mostrar modal si hay selección
 if sku_sel and sector_sel:
     detalle = df[(df["Sector"] == sector_sel) & (df["codigo"] == sku_sel)]
-    
-    st.markdown(f"""
-    <div class="overlay" onclick="window.location.href='.'">
-        <div class="modal" onclick="event.stopPropagation()">
-            <div class="close-btn" onclick="window.location.href='.'">&times;</div>
-            <h4>📦 Registros para <b>{sku_sel}</b> en sector <b>{sector_sel}</b></h4>
-            <div id="detalle-table"></div>
-        </div>
+
+    st.markdown("<div class='modal-box'>", unsafe_allow_html=True)
+    st.markdown("""
+    <div class='modal-close'>
+        <a href='.' style='color:red; font-weight:bold; font-size:18px;'>❌ Cerrar</a>
     </div>
-    <script>
-    const table = `{detalle.to_html(index=False, classes='dataframe', border=0)}`;
-    document.getElementById("detalle-table").innerHTML = table;
-    </script>
     """, unsafe_allow_html=True)
+    st.markdown(f"### Registros para SKU **{sku_sel}** en sector **{sector_sel}**")
+    st.dataframe(detalle.reset_index(drop=True), use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
