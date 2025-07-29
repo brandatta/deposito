@@ -3,11 +3,11 @@ import pandas as pd
 import mysql.connector
 import hashlib
 
-# Configuración
+# Configuración general
 st.set_page_config(page_title="Mapa del Depósito Visual", layout="wide")
 st.title("📦 Plano del Depósito con SKUs y cantidades")
 
-# Conexión a MySQL
+# Conexión MySQL
 def get_connection():
     return mysql.connector.connect(
         host=st.secrets["app_marco_new"]["host"],
@@ -27,33 +27,32 @@ def load_data():
 
 df = load_data()
 
-# Validación
+# Validación de columnas
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Primeros 3 sectores únicos
+# Filtrar primeros 3 sectores únicos
 sectores = df['Sector'].dropna().unique()[:3]
 df = df[df['Sector'].isin(sectores)]
 
-# Agrupación por sector y SKU
+# Agrupar por sector y sku, sumando cantidades
 df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
 
-# Color único por SKU
+# Colores únicos por SKU
 def color_por_codigo(codigo):
     hash_object = hashlib.md5(codigo.encode())
     return '#' + hash_object.hexdigest()[:6]
 
-# CSS con flex horizontal
+# CSS: sectores más chicos, SKUs se mantienen grandes
 st.markdown("""
 <style>
-.flex-grilla {
-    display: flex;
-    flex-direction: row;
-    gap: 20px;
+.grilla {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
     margin-top: 20px;
-    justify-content: center;
-    flex-wrap: nowrap;
+    justify-items: center;
 }
 .sector {
     width: 120px;
@@ -66,7 +65,6 @@ st.markdown("""
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    overflow: hidden;
 }
 .sector-label {
     position: absolute;
@@ -81,6 +79,7 @@ st.markdown("""
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    overflow-y: auto;
     margin-top: 5px;
 }
 .sku {
@@ -95,10 +94,10 @@ st.markdown("""
     color: white;
 }
 </style>
-<div class="flex-grilla">
+<div class="grilla">
 """, unsafe_allow_html=True)
 
-# Renderizar sectores
+# Renderizar cada sector cuadrado
 for sector in sectores:
     grupo = df_grouped[df_grouped['Sector'] == sector]
     html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
@@ -109,5 +108,4 @@ for sector in sectores:
     html += '</div></div>'
     st.markdown(html, unsafe_allow_html=True)
 
-# Cerrar contenedor flex
 st.markdown("</div>", unsafe_allow_html=True)
