@@ -27,7 +27,7 @@ def load_data():
 
 df = load_data()
 
-# Validar columnas
+# Validación de columnas
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
@@ -44,40 +44,43 @@ def color_por_codigo(codigo):
     hash_object = hashlib.md5(codigo.encode())
     return '#' + hash_object.hexdigest()[:6]
 
-# CSS para grilla cuadrada
+# CSS: sectores más chicos, SKUs se mantienen grandes
 st.markdown("""
 <style>
 .grilla {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    gap: 10px;
     margin-top: 20px;
+    justify-items: center;
 }
 .sector {
+    width: 120px;
+    height: 120px;
     border: 2px solid black;
     border-radius: 6px;
-    padding: 8px;
+    padding: 5px;
     background-color: white;
     position: relative;
-    aspect-ratio: 1 / 1;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
 }
 .sector-label {
     position: absolute;
-    top: -18px;
-    left: 10px;
+    top: -16px;
+    left: 5px;
     font-weight: bold;
     background-color: white;
-    padding: 0 6px;
-    font-size: 14px;
+    padding: 0 4px;
+    font-size: 12px;
 }
 .sku-container {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     overflow-y: auto;
+    margin-top: 5px;
 }
 .sku {
     width: 40px;
