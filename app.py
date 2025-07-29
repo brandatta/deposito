@@ -3,7 +3,7 @@ import pandas as pd
 import mysql.connector
 import hashlib
 
-# Configuración general
+# Configuración
 st.set_page_config(page_title="Mapa del Depósito Visual", layout="wide")
 st.title("📦 Plano del Depósito con SKUs y cantidades")
 
@@ -27,85 +27,91 @@ def load_data():
 
 df = load_data()
 
-# Validación de columnas
+# Validación
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Leer parámetros
-params = st.query_params
-sku_sel = params.get("sku", [None])[0]
-sector_sel = params.get("sector", [None])[0]
+# Inicializar estado de modal
+if "modal_abierto" not in st.session_state:
+    st.session_state.modal_abierto = False
+    st.session_state.sku_modal = None
+    st.session_state.sector_modal = None
 
-# Filtrar primeros 3 sectores
+# Filtrar primeros sectores
 sectores = df['Sector'].dropna().unique()[:3]
 df = df[df['Sector'].isin(sectores)]
-
-# Agrupar cantidades por sector y sku
 df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
 
-# Color único por SKU
+# Función color SKU
 def color_por_codigo(codigo):
-    return "#" + hashlib.md5(codigo.encode()).hexdigest()[:6]
+    return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# CSS para grilla y modal
+# CSS para grilla + modal
 st.markdown("""
 <style>
 .grilla {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    gap: 15px;
     margin-top: 20px;
 }
 .sector {
+    width: 120px;
+    height: 120px;
     border: 2px solid black;
     border-radius: 6px;
-    background-color: white;
     padding: 8px;
-    height: 160px;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
     position: relative;
 }
 .sector-label {
-    position: absolute;
-    top: -14px;
-    left: 8px;
-    background-color: white;
-    padding: 0 5px;
     font-weight: bold;
     font-size: 13px;
+    position: absolute;
+    top: -14px;
+    background: white;
+    padding: 0 5px;
 }
 .sku-container {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 18px;
-    justify-content: flex-start;
+    margin-top: 20px;
+    justify-content: center;
 }
-.sku {
-    width: 36px;
-    height: 36px;
+button.sku {
+    width: 40px;
+    height: 40px;
     border-radius: 4px;
     font-weight: bold;
     font-size: 13px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     color: white;
-    text-decoration: none;
+    border: none;
+    cursor: pointer;
 }
-.modal-box {
+.modal-overlay {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    z-index: 999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
     background: white;
-    border: 2px solid #333;
-    border-radius: 10px;
     padding: 20px;
-    z-index: 9999;
+    border-radius: 10px;
     width: 80%;
-    max-width: 700px;
-    max-height: 80vh;
+    max-height: 80%;
     overflow-y: auto;
 }
 .modal-close {
@@ -115,7 +121,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Renderizar grilla
+# Grilla HTML
 st.markdown('<div class="grilla">', unsafe_allow_html=True)
 
 for sector in sectores:
@@ -125,23 +131,33 @@ for sector in sectores:
         color = color_por_codigo(str(row['codigo']))
         cantidad = int(row['cantidad'])
         sku = row["codigo"]
-        url = f"?sku={sku}&sector={sector}"
-        html += f'<a class="sku" href="{url}" style="background-color:{color};" title="{sku}">{cantidad}</a>'
+        # Botón Streamlit invisible
+        if st.button(f"{sector}-{sku}", key=f"{sector}-{sku}"):
+            st.session_state.modal_abierto = True
+            st.session_state.sku_modal = sku
+            st.session_state.sector_modal = sector
+        # Render HTML
+        html += f'<button class="sku" style="background-color:{color};">{cantidad}</button>'
     html += '</div></div>'
     st.markdown(html, unsafe_allow_html=True)
 
-st.markdown("</div>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
-# Mostrar modal si hay selección
-if sku_sel and sector_sel:
-    detalle = df[(df["Sector"] == sector_sel) & (df["codigo"] == sku_sel)]
+# Modal
+if st.session_state.modal_abierto:
+    st.markdown('<div class="modal-overlay">', unsafe_allow_html=True)
+    st.markdown('<div class="modal-content">', unsafe_allow_html=True)
+    st.markdown('<div class="modal-close">', unsafe_allow_html=True)
+    if st.button("❌ Cerrar"):
+        st.session_state.modal_abierto = False
+        st.stop()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    sku = st.session_state.sku_modal
+    sector = st.session_state.sector_modal
+    st.markdown(f"### 📦 Registros para SKU **{sku}** en sector **{sector}**")
+    df_detalle = df[(df["Sector"] == sector) & (df["codigo"] == sku)]
+    st.dataframe(df_detalle.reset_index(drop=True), use_container_width=True)
 
-    st.markdown("<div class='modal-box'>", unsafe_allow_html=True)
-    st.markdown("""
-    <div class='modal-close'>
-        <a href='.' style='color:red; font-weight:bold; font-size:18px;'>❌ Cerrar</a>
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown(f"### Registros para SKU **{sku_sel}** en sector **{sector_sel}**")
-    st.dataframe(detalle.reset_index(drop=True), use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
