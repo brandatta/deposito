@@ -1,56 +1,11 @@
-import streamlit as st
-import pandas as pd
-import mysql.connector
-import hashlib
+# ... tu código Python hasta CSS igual ...
 
-# Configuración general
-st.set_page_config(page_title="Mapa del Depósito Visual", layout="wide")
-st.title("📦 Plano del Depósito con SKUs y cantidades")
-
-# Conexión MySQL
-def get_connection():
-    return mysql.connector.connect(
-        host=st.secrets["app_marco_new"]["host"],
-        user=st.secrets["app_marco_new"]["user"],
-        password=st.secrets["app_marco_new"]["password"],
-        database=st.secrets["app_marco_new"]["database"],
-        port=3306,
-    )
-
-# Cargar datos
-@st.cache_data
-def load_data():
-    conn = get_connection()
-    df = pd.read_sql("SELECT * FROM mapa_deposito", conn)
-    conn.close()
-    return df
-
-df = load_data()
-
-# Validación de columnas
-if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
-    st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
-    st.stop()
-
-# Filtrar primeros 3 sectores únicos
-sectores = df['Sector'].dropna().unique()[:3]
-df = df[df['Sector'].isin(sectores)]
-
-# Agrupar por sector y sku, sumando cantidades
-df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
-
-# Colores únicos por SKU
-def color_por_codigo(codigo):
-    hash_object = hashlib.md5(codigo.encode())
-    return '#' + hash_object.hexdigest()[:6]
-
-# CSS: sectores más chicos, SKUs se mantienen grandes
 st.markdown("""
 <style>
 .grilla {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    grid-template-columns: 1fr;
+    gap: 15px;
     margin-top: 20px;
     justify-items: center;
 }
@@ -59,28 +14,26 @@ st.markdown("""
     height: 120px;
     border: 2px solid black;
     border-radius: 6px;
-    padding: 5px;
+    padding: 8px 5px 5px 5px;
     background-color: white;
-    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
+    align-items: center;
 }
 .sector-label {
-    position: absolute;
-    top: -16px;
-    left: 5px;
     font-weight: bold;
-    background-color: white;
-    padding: 0 4px;
-    font-size: 12px;
+    font-size: 13px;
+    margin-bottom: 6px;
+    text-align: center;
+    width: 100%;
 }
 .sku-container {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     overflow-y: auto;
-    margin-top: 5px;
+    justify-content: center;
 }
 .sku {
     width: 40px;
@@ -97,7 +50,7 @@ st.markdown("""
 <div class="grilla">
 """, unsafe_allow_html=True)
 
-# Renderizar cada sector cuadrado
+# Renderizado igual, pero sector-label ya se ve bien
 for sector in sectores:
     grupo = df_grouped[df_grouped['Sector'] == sector]
     html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
