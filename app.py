@@ -48,7 +48,7 @@ params = st.query_params
 sku_sel = params.get("sku", [None])[0]
 sector_sel = params.get("sector", [None])[0]
 
-# CSS
+# CSS + JavaScript
 st.markdown("""
 <style>
 .grilla {
@@ -92,8 +92,18 @@ st.markdown("""
     justify-content: center;
     color: white;
     text-decoration: none;
+    cursor: pointer;
 }
 </style>
+
+<script>
+function navegar(sku, sector) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("sku", sku);
+    url.searchParams.set("sector", sector);
+    window.location.href = url.toString();
+}
+</script>
 """, unsafe_allow_html=True)
 
 # Dibujar la grilla de sectores
@@ -106,8 +116,7 @@ for sector in sectores:
         color = color_por_codigo(str(row['codigo']))
         cantidad = int(row['cantidad'])
         sku = row["codigo"]
-        url = f"?sku={sku}&sector={sector}"
-        html += f'<a class="sku" href="{url}" style="background-color:{color};" title="{sku}">{cantidad}</a>'
+        html += f'<div class="sku" onclick="navegar(\'{sku}\', \'{sector}\')" style="background-color:{color};" title="{sku}">{cantidad}</div>'
     html += '</div></div>'
     st.markdown(html, unsafe_allow_html=True)
 
