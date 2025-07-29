@@ -44,7 +44,7 @@ def color_por_codigo(codigo):
     hash_object = hashlib.md5(codigo.encode())
     return '#' + hash_object.hexdigest()[:6]
 
-# CSS y estructura de grilla
+# CSS para grilla cuadrada
 st.markdown("""
 <style>
 .grilla {
@@ -56,10 +56,13 @@ st.markdown("""
 .sector {
     border: 2px solid black;
     border-radius: 6px;
-    padding: 10px;
-    min-height: 200px;
+    padding: 8px;
     background-color: white;
     position: relative;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
 }
 .sector-label {
     position: absolute;
@@ -74,6 +77,7 @@ st.markdown("""
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    overflow-y: auto;
 }
 .sku {
     width: 40px;
@@ -90,7 +94,7 @@ st.markdown("""
 <div class="grilla">
 """, unsafe_allow_html=True)
 
-# Renderizar cada sector
+# Renderizar cada sector cuadrado
 for sector in sectores:
     grupo = df_grouped[df_grouped['Sector'] == sector]
     html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
