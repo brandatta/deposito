@@ -27,30 +27,30 @@ def load_data():
 
 df = load_data()
 
-# Validación de columnas
+# Validación
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
-
-# Estado inicial
-if 'sector_seleccionado' not in st.session_state:
-    st.session_state.sector_seleccionado = None
 
 # Dropdown para seleccionar SKU
 codigos_disponibles = df['codigo'].dropna().unique()
 codigo_seleccionado = st.selectbox("Seleccioná un código:", codigos_disponibles)
 
-# Agrupar cantidad por sector para el código seleccionado
+# Agrupar cantidad por sector
 df_filtrado = df[df['codigo'] == codigo_seleccionado]
 df_sector = df_filtrado.groupby('Sector', as_index=False)['cantidad'].sum()
 
-# Tomar los primeros 3 sectores únicos para la grilla
+# Lista de sectores a mostrar en grilla
 sectores_grilla = df['Sector'].dropna().unique()[:3]
 cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_sector.iterrows()}
 
-# Función para color único por código
+# Color único por SKU
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
+
+# Inicializar selección de sector
+if "sector_activo" not in st.session_state:
+    st.session_state.sector_activo = None
 
 # CSS
 st.markdown(f"""
@@ -62,7 +62,6 @@ st.markdown(f"""
     margin-top: 30px;
     justify-items: center;
 }}
-
 .sector {{
     width: 120px;
     aspect-ratio: 1 / 1;
@@ -75,8 +74,8 @@ st.markdown(f"""
     justify-content: center;
     position: relative;
     box-sizing: border-box;
+    cursor: pointer;
 }}
-
 .sector-label {{
     position: absolute;
     top: 6px;
@@ -86,7 +85,6 @@ st.markdown(f"""
     background-color: white;
     padding: 0 4px;
 }}
-
 .cantidad-box {{
     width: 40px;
     height: 40px;
@@ -98,37 +96,39 @@ st.markdown(f"""
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
 }}
 </style>
 """, unsafe_allow_html=True)
 
-# Layout: tabla de detalle (izquierda) y grilla (derecha)
-col1, col2 = st.columns([2, 3])
+# Layout: Izquierda (grilla) y derecha (detalle)
+col1, col2 = st.columns([2, 1])
 
 with col1:
-    if st.session_state.sector_seleccionado:
-        st.markdown("### 🧾 Detalle del sector")
-        if st.button("❌ Cerrar"):
-            st.session_state.sector_seleccionado = None
-        else:
-            detalle = df[df['Sector'] == st.session_state.sector_seleccionado]
-            resumen = detalle.groupby('codigo', as_index=False)['cantidad'].sum()
-            st.dataframe(resumen, use_container_width=True)
-
-with col2:
     st.markdown('<div class="grilla">', unsafe_allow_html=True)
+
     for sector in sectores_grilla:
         cantidad = cantidades_por_sector.get(sector, 0)
-
-        if st.button(f"📍 {sector}", key=f"btn_{sector}"):
-            st.session_state.sector_seleccionado = sector
+        button_key = f"sector_{sector}"
+        if st.button(f"{sector}", key=button_key):
+            st.session_state.sector_activo = sector
 
         html = f"""
-        <div class="sector">
+        <div class="sector" onclick="document.getElementById('{button_key}').click()">
             <div class="sector-label">{sector}</div>"""
         if cantidad > 0:
-            html += f"""<div class="cantidad-box">{cantidad}</div>"""
+            html += f"""
+            <div class="cantidad-box">{cantidad}</div>"""
         html += "</div>"
         st.markdown(html, unsafe_allow_html=True)
+
     st.markdown("</div>", unsafe_allow_html=True)
+
+with col2:
+    if st.session_state.sector_activo:
+        st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
+        if st.button("❌ Cerrar"):
+            st.session_state.sector_activo = None
+        else:
+            detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
+            resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
+            st.dataframe(resumen, use_container_width=True)
