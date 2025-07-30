@@ -40,36 +40,28 @@ codigo_seleccionado = st.selectbox("Seleccioná un código:", codigos_disponible
 df_filtrado = df[df['codigo'] == codigo_seleccionado]
 df_sector = df_filtrado.groupby('Sector', as_index=False)['cantidad'].sum()
 
-# Lista de sectores (grilla 3x1)
+# Lista de sectores
 sectores_grilla = df['Sector'].dropna().unique()[:3]
 cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_sector.iterrows()}
 
-# Color único por SKU
+# Color por código
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# Inicializar estado
+# Inicializar estado de sector seleccionado
 if "sector_activo" not in st.session_state:
     st.session_state.sector_activo = None
 
-# ---------- CSS personalizado ----------
+# CSS
 st.markdown(f"""
 <style>
-.container-principal {{
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
-    margin-top: 20px;
-    gap: 100px;
-}}
-
 .grilla {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 22px;
+    margin-top: 20px;
     justify-items: center;
 }}
-
 .sector {{
     width: 120px;
     aspect-ratio: 1 / 1;
@@ -84,7 +76,6 @@ st.markdown(f"""
     box-sizing: border-box;
     margin-bottom: 16px;
 }}
-
 .sector-label {{
     position: absolute;
     top: 6px;
@@ -93,7 +84,6 @@ st.markdown(f"""
     background-color: white;
     padding: 0 4px;
 }}
-
 .cantidad-box {{
     width: 40px;
     height: 40px;
@@ -107,45 +97,33 @@ st.markdown(f"""
     justify-content: center;
     margin-top: 12px;
 }}
-
-.panel-derecho {{
-    max-width: 300px;
-}}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- Contenedor visual principal ----------
-st.markdown('<div class="container-principal">', unsafe_allow_html=True)
-
-# ---------- Grilla de sectores ----------
+# Layout combinado: grilla + detalle alineado horizontalmente
 with st.container():
-    st.markdown('<div class="grilla">', unsafe_allow_html=True)
+    col1, col2 = st.columns([3, 2], gap="small")
 
-    for sector in sectores_grilla:
-        cantidad = cantidades_por_sector.get(sector, 0)
-        html = f'<div class="sector"><div class="sector-label">{sector}</div>'
-        if cantidad > 0:
-            html += f'<div class="cantidad-box">{cantidad}</div>'
-        html += '</div>'
-        st.markdown(html, unsafe_allow_html=True)
-        if st.button(f"Ver {sector}", key=sector):
-            st.session_state.sector_activo = sector
+    with col1:
+        st.markdown('<div class="grilla">', unsafe_allow_html=True)
+        for sector in sectores_grilla:
+            cantidad = cantidades_por_sector.get(sector, 0)
+            with st.container():
+                html = f'<div class="sector"><div class="sector-label">{sector}</div>'
+                if cantidad > 0:
+                    html += f'<div class="cantidad-box">{cantidad}</div>'
+                html += '</div>'
+                st.markdown(html, unsafe_allow_html=True)
+                if st.button(f"Ver {sector}", key=sector):
+                    st.session_state.sector_activo = sector
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ---------- Panel de detalle a la derecha ----------
-if st.session_state.sector_activo:
-    st.markdown('<div class="panel-derecho">', unsafe_allow_html=True)
-
-    st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
-    if st.button("❌ Cerrar detalle"):
-        st.session_state.sector_activo = None
-    else:
-        detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
-        resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
-        st.dataframe(resumen, use_container_width=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Cierre contenedor principal
-st.markdown('</div>', unsafe_allow_html=True)
+    with col2:
+        if st.session_state.sector_activo:
+            st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
+            if st.button("❌ Cerrar detalle"):
+                st.session_state.sector_activo = None
+            else:
+                detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
+                resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
+                st.dataframe(resumen, use_container_width=True)
