@@ -100,29 +100,36 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Diseño con columnas proporcionales
-col1, col2 = st.columns([3, 1])  # Grilla más detalle
+# Layout de grilla
+st.markdown('<div class="grilla">', unsafe_allow_html=True)
+for sector in sectores_grilla:
+    cantidad = cantidades_por_sector.get(sector, 0)
+    with st.container():
+        html = f'<div class="sector"><div class="sector-label">{sector}</div>'
+        if cantidad > 0:
+            html += f'<div class="cantidad-box">{cantidad}</div>'
+        html += '</div>'
+        st.markdown(html, unsafe_allow_html=True)
+        if st.button(f"Ver {sector}", key=sector):
+            st.session_state.sector_activo = sector
+st.markdown("</div>", unsafe_allow_html=True)
 
-with col1:
-    st.markdown('<div class="grilla">', unsafe_allow_html=True)
-    for sector in sectores_grilla:
-        cantidad = cantidades_por_sector.get(sector, 0)
-        with st.container():
-            html = f'<div class="sector"><div class="sector-label">{sector}</div>'
-            if cantidad > 0:
-                html += f'<div class="cantidad-box">{cantidad}</div>'
-            html += '</div>'
-            st.markdown(html, unsafe_allow_html=True)
-            if st.button(f"Ver {sector}", key=sector):
-                st.session_state.sector_activo = sector
-    st.markdown("</div>", unsafe_allow_html=True)
+# Detalle centrado respecto a la página
+if st.session_state.sector_activo:
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style='display: flex; justify-content: center;'>
+            <div style='width: 500px;'>
+        """, unsafe_allow_html=True
+    )
 
-with col2:
-    if st.session_state.sector_activo:
-        st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
-        if st.button("❌ Cerrar detalle"):
-            st.session_state.sector_activo = None
-        else:
-            detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
-            resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
-            st.dataframe(resumen, use_container_width=True)
+    st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
+    if st.button("❌ Cerrar detalle"):
+        st.session_state.sector_activo = None
+    else:
+        detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
+        resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
+        st.dataframe(resumen, use_container_width=True)
+
+    st.markdown("</div></div>", unsafe_allow_html=True)
