@@ -100,12 +100,11 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Layout principal: grilla izquierda, tabla más centrada
-col1, col2 = st.columns([3, 2.5])  # Ajustado para acercar col2 sin mover col1
+# Diseño con columnas proporcionales
+col1, col2 = st.columns([3, 1])  # Grilla más detalle
 
 with col1:
     st.markdown('<div class="grilla">', unsafe_allow_html=True)
-
     for sector in sectores_grilla:
         cantidad = cantidades_por_sector.get(sector, 0)
         with st.container():
@@ -116,7 +115,6 @@ with col1:
             st.markdown(html, unsafe_allow_html=True)
             if st.button(f"Ver {sector}", key=sector):
                 st.session_state.sector_activo = sector
-
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col2:
