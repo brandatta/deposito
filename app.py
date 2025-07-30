@@ -100,8 +100,8 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Layout principal: grilla + panel más centrado
-col1, col2 = st.columns([3, 2])  # ahora más cerca del centro
+# Layout principal (ajustado para centrar el detalle más cerca de la grilla)
+espacio_izq, col1, col2, espacio_der = st.columns([1, 2.5, 2.5, 1])
 
 with col1:
     st.markdown('<div class="grilla">', unsafe_allow_html=True)
