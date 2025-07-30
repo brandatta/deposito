@@ -40,15 +40,15 @@ codigo_seleccionado = st.selectbox("Seleccioná un código:", codigos_disponible
 df_filtrado = df[df['codigo'] == codigo_seleccionado]
 df_sector = df_filtrado.groupby('Sector', as_index=False)['cantidad'].sum()
 
-# Lista de sectores a mostrar en grilla
+# Lista de sectores
 sectores_grilla = df['Sector'].dropna().unique()[:3]
 cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_sector.iterrows()}
 
-# Color único por SKU
+# Color por código
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# Inicializar selección de sector
+# Inicializar estado de sector seleccionado
 if "sector_activo" not in st.session_state:
     st.session_state.sector_activo = None
 
@@ -58,8 +58,8 @@ st.markdown(f"""
 .grilla {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 25px;
-    margin-top: 30px;
+    gap: 22px;
+    margin-top: 20px;
     justify-items: center;
 }}
 .sector {{
@@ -74,6 +74,7 @@ st.markdown(f"""
     justify-content: center;
     position: relative;
     box-sizing: border-box;
+    margin-bottom: 16px;
     cursor: pointer;
 }}
 .sector-label {{
@@ -81,7 +82,6 @@ st.markdown(f"""
     top: 6px;
     font-size: 13px;
     font-weight: bold;
-    text-align: center;
     background-color: white;
     padding: 0 4px;
 }}
@@ -96,38 +96,41 @@ st.markdown(f"""
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-top: 12px;
 }}
 </style>
 """, unsafe_allow_html=True)
 
-# Layout: Izquierda (grilla) y derecha (detalle)
-col1, col2 = st.columns([2, 1])
+# Layout con grilla a la izquierda y detalle a la derecha
+col1, col2 = st.columns([4, 2])
 
 with col1:
     st.markdown('<div class="grilla">', unsafe_allow_html=True)
 
     for sector in sectores_grilla:
         cantidad = cantidades_por_sector.get(sector, 0)
-        button_key = f"sector_{sector}"
-        if st.button(f"{sector}", key=button_key):
-            st.session_state.sector_activo = sector
-
         html = f"""
-        <div class="sector" onclick="document.getElementById('{button_key}').click()">
+        <div class="sector" onclick="window.location.href='?sector={sector}'">
             <div class="sector-label">{sector}</div>"""
         if cantidad > 0:
-            html += f"""
-            <div class="cantidad-box">{cantidad}</div>"""
+            html += f"""<div class="cantidad-box">{cantidad}</div>"""
         html += "</div>"
         st.markdown(html, unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+# Obtener sector desde query param
+params = st.query_params
+sector_qs = params.get("sector", [None])[0]
+if sector_qs:
+    st.session_state.sector_activo = sector_qs
+
 with col2:
     if st.session_state.sector_activo:
         st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
-        if st.button("❌ Cerrar"):
+        if st.button("❌ Cerrar detalle"):
             st.session_state.sector_activo = None
+            st.query_params.clear()
         else:
             detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
             resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
