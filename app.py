@@ -102,7 +102,7 @@ st.markdown(f"""
 
 # Layout combinado: grilla + detalle alineado horizontalmente
 with st.container():
-    col1, col2 = st.columns([3, 2], gap="large")
+    col1, col2 = st.columns([3, 2], gap="small")
 
     with col1:
         st.markdown('<div class="grilla">', unsafe_allow_html=True)
