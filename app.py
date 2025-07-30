@@ -75,7 +75,6 @@ st.markdown(f"""
     position: relative;
     box-sizing: border-box;
     margin-bottom: 16px;
-    cursor: pointer;
 }}
 .sector-label {{
     position: absolute;
@@ -101,7 +100,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Layout con grilla a la izquierda y detalle a la derecha
+# Layout principal: grilla izquierda, tabla derecha
 col1, col2 = st.columns([4, 2])
 
 with col1:
@@ -109,28 +108,22 @@ with col1:
 
     for sector in sectores_grilla:
         cantidad = cantidades_por_sector.get(sector, 0)
-        html = f"""
-        <div class="sector" onclick="window.location.href='?sector={sector}'">
-            <div class="sector-label">{sector}</div>"""
-        if cantidad > 0:
-            html += f"""<div class="cantidad-box">{cantidad}</div>"""
-        html += "</div>"
-        st.markdown(html, unsafe_allow_html=True)
+        with st.container():
+            html = f'<div class="sector"><div class="sector-label">{sector}</div>'
+            if cantidad > 0:
+                html += f'<div class="cantidad-box">{cantidad}</div>'
+            html += '</div>'
+            st.markdown(html, unsafe_allow_html=True)
+            if st.button(f"Ver {sector}", key=sector):
+                st.session_state.sector_activo = sector
 
     st.markdown("</div>", unsafe_allow_html=True)
-
-# Obtener sector desde query param
-params = st.query_params
-sector_qs = params.get("sector", [None])[0]
-if sector_qs:
-    st.session_state.sector_activo = sector_qs
 
 with col2:
     if st.session_state.sector_activo:
         st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
         if st.button("❌ Cerrar detalle"):
             st.session_state.sector_activo = None
-            st.query_params.clear()
         else:
             detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
             resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
