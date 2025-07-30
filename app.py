@@ -62,6 +62,7 @@ st.markdown(f"""
     margin-top: 30px;
     justify-items: center;
 }}
+
 .sector {{
     width: 120px;
     aspect-ratio: 1 / 1;
@@ -75,6 +76,7 @@ st.markdown(f"""
     position: relative;
     box-sizing: border-box;
 }}
+
 .sector-label {{
     position: absolute;
     top: 6px;
@@ -84,6 +86,7 @@ st.markdown(f"""
     background-color: white;
     padding: 0 4px;
 }}
+
 .cantidad-box {{
     width: 40px;
     height: 40px;
@@ -98,36 +101,34 @@ st.markdown(f"""
     cursor: pointer;
 }}
 </style>
-<div class="grilla">
 """, unsafe_allow_html=True)
 
-# Layout con dos columnas
-col1, col2 = st.columns([1, 3])
+# Layout con dos columnas (izquierda: detalle, derecha: grilla)
+col1, col2 = st.columns([2, 3])
 
-# Mostrar detalles si hay sector seleccionado
+# Mostrar detalle si hay sector seleccionado
 with col1:
     if st.session_state.sector_seleccionado:
         st.markdown("### 🧾 Detalle del sector")
-        if st.button("❌ Cerrar detalle"):
+        if st.button("❌ Cerrar"):
             st.session_state.sector_seleccionado = None
         else:
             detalle = df[df['Sector'] == st.session_state.sector_seleccionado]
             resumen = detalle.groupby('codigo', as_index=False)['cantidad'].sum()
             st.dataframe(resumen, use_container_width=True)
 
-# Dibujar grilla en col2
+# Grilla de sectores
 with col2:
+    st.markdown('<div class="grilla">', unsafe_allow_html=True)
     for sector in sectores_grilla:
         cantidad = cantidades_por_sector.get(sector, 0)
+        if st.button(f"{sector}", key=f"boton_{sector}"):
+            st.session_state.sector_seleccionado = sector
         html = f"""
         <div class="sector">
             <div class="sector-label">{sector}</div>"""
         if cantidad > 0:
-            if st.button(f"{cantidad} {sector}", key=sector):
-                st.session_state.sector_seleccionado = sector
-            html += f"""
-            <div class="cantidad-box">{cantidad}</div>"""
+            html += f"""<div class="cantidad-box">{cantidad}</div>"""
         html += "</div>"
         st.markdown(html, unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
