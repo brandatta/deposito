@@ -55,11 +55,17 @@ if "sector_activo" not in st.session_state:
 # CSS
 st.markdown(f"""
 <style>
+.main-container {{
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 80px;
+    margin-top: 30px;
+}}
 .grilla {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 22px;
-    margin-top: 20px;
     justify-items: center;
 }}
 .sector {{
@@ -100,7 +106,10 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Layout de grilla
+# CONTENEDOR PRINCIPAL: grilla + detalle a la derecha
+st.markdown("<div class='main-container'>", unsafe_allow_html=True)
+
+# COLUMNA GRILLA
 st.markdown('<div class="grilla">', unsafe_allow_html=True)
 for sector in sectores_grilla:
     cantidad = cantidades_por_sector.get(sector, 0)
@@ -114,22 +123,17 @@ for sector in sectores_grilla:
             st.session_state.sector_activo = sector
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Detalle centrado respecto a la página
+# COLUMNA DETALLE
 if st.session_state.sector_activo:
-    st.markdown("---")
-    st.markdown(
-        """
-        <div style='display: flex; justify-content: center;'>
-            <div style='width: 500px;'>
-        """, unsafe_allow_html=True
-    )
-
+    st.markdown("<div>", unsafe_allow_html=True)
     st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
     if st.button("❌ Cerrar detalle"):
         st.session_state.sector_activo = None
     else:
         detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
         resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
-        st.dataframe(resumen, use_container_width=True)
+        st.dataframe(resumen, use_container_width=False)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown("</div></div>", unsafe_allow_html=True)
+# CERRAR CONTENEDOR
+st.markdown("</div>", unsafe_allow_html=True)
