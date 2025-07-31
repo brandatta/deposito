@@ -52,9 +52,15 @@ def color_por_codigo(codigo):
 if "sector_activo" not in st.session_state:
     st.session_state.sector_activo = None
 
-# CSS
+# CSS personalizado para reducir espacio entre columnas
 st.markdown(f"""
 <style>
+/* Ajuste del espaciado horizontal entre columnas */
+.css-1lcbmhc .element-container {{
+    padding-right: 6px !important;
+    padding-left: 6px !important;
+}}
+
 .grilla {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -62,6 +68,7 @@ st.markdown(f"""
     margin-top: 20px;
     justify-items: center;
 }}
+
 .sector {{
     width: 120px;
     aspect-ratio: 1 / 1;
@@ -76,6 +83,7 @@ st.markdown(f"""
     box-sizing: border-box;
     margin-bottom: 16px;
 }}
+
 .sector-label {{
     position: absolute;
     top: 6px;
@@ -84,6 +92,7 @@ st.markdown(f"""
     background-color: white;
     padding: 0 4px;
 }}
+
 .cantidad-box {{
     width: 40px;
     height: 40px;
@@ -100,7 +109,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Layout combinado: grilla + detalle alineado horizontalmente
+# Layout combinado con espacio reducido entre grilla y detalle
 with st.container():
     col1, col2 = st.columns([3, 2], gap="small")
 
