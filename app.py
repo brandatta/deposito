@@ -107,9 +107,3 @@ for sector in sectores:
     st.markdown(html, unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
-
-    if st.button("❌ Cerrar detalle"):
-        st.session_state.sector_activo = None
-
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
