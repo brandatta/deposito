@@ -48,35 +48,23 @@ cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_se
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# Inicializar estado de sector seleccionado
+# Estado de sector seleccionado
 if "sector_activo" not in st.session_state:
     st.session_state.sector_activo = None
 
 # CSS personalizado
 st.markdown(f"""
 <style>
-/* Layout principal horizontal */
-.contenedor-flex {{
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 10px;
+.grilla {{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
     margin-top: 20px;
+    justify-items: center;
 }}
-
-/* Grilla vertical */
-.columna-vertical {{
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    width: 280px;
-    min-width: 280px;
-}}
-
-/* Cuadro de sector */
 .sector {{
     width: 120px;
-    height: 120px;
+    aspect-ratio: 1 / 1;
     border: 2px solid black;
     border-radius: 8px;
     background-color: #ffffff;
@@ -86,8 +74,8 @@ st.markdown(f"""
     justify-content: center;
     position: relative;
     box-sizing: border-box;
+    margin-bottom: 16px;
 }}
-
 .sector-label {{
     position: absolute;
     top: 6px;
@@ -96,7 +84,6 @@ st.markdown(f"""
     background-color: white;
     padding: 0 4px;
 }}
-
 .cantidad-box {{
     width: 40px;
     height: 40px;
@@ -111,47 +98,76 @@ st.markdown(f"""
     margin-top: 12px;
 }}
 
-/* Panel de detalle */
-.detalle-panel {{
-    width: 360px;
-    min-width: 360px;
+/* Modal */
+.modal-bg {{
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}}
+
+.modal {{
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}}
+
+.modal h4 {{
+    margin-top: 0;
+}}
+
+.modal-close {{
+    float: right;
+    cursor: pointer;
+    font-weight: bold;
+    color: #d00;
 }}
 </style>
 """, unsafe_allow_html=True)
 
-# Layout visual
-st.markdown('<div class="contenedor-flex">', unsafe_allow_html=True)
-
-# Grilla a la izquierda
+# Layout combinado
 with st.container():
-    st.markdown('<div class="columna-vertical">', unsafe_allow_html=True)
-    for sector in sectores_grilla:
-        cantidad = cantidades_por_sector.get(sector, 0)
+    col1, col2 = st.columns([3, 2], gap="small")
 
-        # Caja del sector
-        html = f'<div class="sector"><div class="sector-label">{sector}</div>'
-        if cantidad > 0:
-            html += f'<div class="cantidad-box">{cantidad}</div>'
-        html += '</div>'
-        st.markdown(html, unsafe_allow_html=True)
-
-        # Botón debajo
-        if st.button(f"Ver {sector}", key=f"btn_{sector}"):
-            st.session_state.sector_activo = sector
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Panel de detalle a la derecha
-with st.container():
-    if st.session_state.sector_activo:
-        st.markdown('<div class="detalle-panel">', unsafe_allow_html=True)
-        st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
-        if st.button("❌ Cerrar detalle"):
-            st.session_state.sector_activo = None
-        else:
-            detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
-            resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
-            st.dataframe(resumen, use_container_width=True)
+    with col1:
+        st.markdown('<div class="grilla">', unsafe_allow_html=True)
+        for sector in sectores_grilla:
+            cantidad = cantidades_por_sector.get(sector, 0)
+            with st.container():
+                html = f'<div class="sector"><div class="sector-label">{sector}</div>'
+                if cantidad > 0:
+                    html += f'<div class="cantidad-box">{cantidad}</div>'
+                html += '</div>'
+                st.markdown(html, unsafe_allow_html=True)
+                if st.button(f"Ver {sector}", key=sector):
+                    st.session_state.sector_activo = sector
         st.markdown("</div>", unsafe_allow_html=True)
 
-# Cierre del flex container
-st.markdown("</div>", unsafe_allow_html=True)
+# Modal de detalle (fuera del layout principal)
+if st.session_state.sector_activo:
+    detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
+    resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
+
+    # HTML modal con botón cerrar
+    st.markdown(f"""
+    <div class="modal-bg">
+        <div class="modal">
+            <div class="modal-close" onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'close'}}, '*')">❌</div>
+            <h4>📍 Sector: {st.session_state.sector_activo}</h4>
+    """, unsafe_allow_html=True)
+
+    st.dataframe(resumen, use_container_width=True)
+
+    # Botón cerrar desde Streamlit
+    if st.button("Cerrar detalle"):
+        st.session_state.sector_activo = None
+
+    st.markdown("</div></div>", unsafe_allow_html=True)
