@@ -48,11 +48,11 @@ cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_se
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# Estado de sector seleccionado
+# Estado
 if "sector_activo" not in st.session_state:
     st.session_state.sector_activo = None
 
-# CSS personalizado
+# CSS
 st.markdown(f"""
 <style>
 .grilla {{
@@ -98,42 +98,34 @@ st.markdown(f"""
     margin-top: 12px;
 }}
 
-/* Modal */
-.modal-bg {{
+/* Fondo modal */
+.modal-overlay {{
     position: fixed;
     top: 0; left: 0;
     width: 100vw; height: 100vh;
-    background: rgba(0,0,0,0.5);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 999;
 }}
 
+/* Contenedor modal */
 .modal {{
-    background: white;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    background-color: white;
     padding: 20px;
     border-radius: 10px;
-    width: 500px;
+    width: 600px;
     max-height: 80vh;
     overflow-y: auto;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
-}}
-
-.modal h4 {{
-    margin-top: 0;
-}}
-
-.modal-close {{
-    float: right;
-    cursor: pointer;
-    font-weight: bold;
-    color: #d00;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
 }}
 </style>
 """, unsafe_allow_html=True)
 
-# Layout combinado
+# Layout principal
 with st.container():
     col1, col2 = st.columns([3, 2], gap="small")
 
@@ -151,23 +143,17 @@ with st.container():
                     st.session_state.sector_activo = sector
         st.markdown("</div>", unsafe_allow_html=True)
 
-# Modal de detalle (fuera del layout principal)
+# MODAL visual (overlay + contenido Streamlit)
 if st.session_state.sector_activo:
+    st.markdown('<div class="modal-overlay"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="modal">', unsafe_allow_html=True)
+
+    st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
     detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
     resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
-
-    # HTML modal con botón cerrar
-    st.markdown(f"""
-    <div class="modal-bg">
-        <div class="modal">
-            <div class="modal-close" onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'close'}}, '*')">❌</div>
-            <h4>📍 Sector: {st.session_state.sector_activo}</h4>
-    """, unsafe_allow_html=True)
-
     st.dataframe(resumen, use_container_width=True)
 
-    # Botón cerrar desde Streamlit
-    if st.button("Cerrar detalle"):
+    if st.button("❌ Cerrar detalle"):
         st.session_state.sector_activo = None
 
-    st.markdown("</div></div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
