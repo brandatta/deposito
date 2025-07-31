@@ -58,7 +58,7 @@ st.markdown(f"""
 .contenedor-flex {{
     display: flex;
     flex-direction: row;
-    gap: 20; /* Espacio mínimo entre grilla y detalle */
+    gap: 50px; /* Espacio mínimo entre grilla y detalle */
     align-items: flex-start;
     margin-top: 20px;
 }}
