@@ -5,7 +5,7 @@ import hashlib
 
 # Configuración general
 st.set_page_config(page_title="Mapa del Depósito Visual", layout="wide")
-st.title("📦 Plano del Depósito (por SKU)")
+st.title("📦 Plano del Depósito con SKUs y cantidades")
 
 # Conexión MySQL
 def get_connection():
@@ -27,119 +27,86 @@ def load_data():
 
 df = load_data()
 
-# Validación
+# Validación de columnas
 if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
-# Dropdown para seleccionar SKU
-codigos_disponibles = df['codigo'].dropna().unique()
-codigo_seleccionado = st.selectbox("Seleccioná un código:", codigos_disponibles)
+# Filtrar primeros 3 sectores únicos
+sectores = df['Sector'].dropna().unique()[:3]
+df = df[df['Sector'].isin(sectores)]
 
-# Agrupar cantidad por sector
-df_filtrado = df[df['codigo'] == codigo_seleccionado]
-df_sector = df_filtrado.groupby('Sector', as_index=False)['cantidad'].sum()
+# Agrupar por sector y sku, sumando cantidades
+df_grouped = df.groupby(['Sector', 'codigo'], as_index=False)['cantidad'].sum()
 
-# Lista de sectores
-sectores_grilla = df['Sector'].dropna().unique()[:3]
-cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_sector.iterrows()}
-
-# Color por código
+# Función para color único por SKU
 def color_por_codigo(codigo):
-    return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
+    hash_object = hashlib.md5(codigo.encode())
+    return '#' + hash_object.hexdigest()[:6]
 
-# Estado
-if "sector_activo" not in st.session_state:
-    st.session_state.sector_activo = None
-
-# Estilos
-st.markdown(f"""
+# CSS y estructura HTML
+st.markdown("""
 <style>
-.grilla {{
+.grilla {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 22px;
+    grid-template-columns: 1fr;
+    gap: 15px;
     margin-top: 20px;
     justify-items: center;
-}}
-.sector {{
+}
+.sector {
     width: 120px;
-    aspect-ratio: 1 / 1;
+    height: 120px;
     border: 2px solid black;
-    border-radius: 8px;
-    background-color: #ffffff;
+    border-radius: 6px;
+    padding: 8px 5px 5px 5px;
+    background-color: white;
     display: flex;
     flex-direction: column;
+    justify-content: flex-start;
     align-items: center;
-    justify-content: center;
-    position: relative;
-    box-sizing: border-box;
-    margin-bottom: 16px;
-}}
-.sector-label {{
-    position: absolute;
-    top: 6px;
-    font-size: 13px;
+}
+.sector-label {
     font-weight: bold;
-    background-color: white;
-    padding: 0 4px;
-}}
-.cantidad-box {{
+    font-size: 13px;
+    margin-bottom: 6px;
+    text-align: center;
+    width: 100%;
+}
+.sku-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    overflow-y: auto;
+    justify-content: center;
+}
+.sku {
     width: 40px;
     height: 40px;
-    border-radius: 6px;
-    background-color: {color_por_codigo(codigo_seleccionado)};
-    color: white;
-    font-weight: bold;
-    font-size: 14px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 12px;
-}}
-
-/* Simulación de modal */
-.overlay {{
-    background-color: rgba(0,0,0,0.6);
-    padding: 40px;
-    border-radius: 10px;
-    margin-top: 20px;
-}}
-.modal-box {{
-    background-color: white;
-    padding: 20px;
-    border-radius: 10px;
-}}
+    font-weight: bold;
+    font-size: 13px;
+    color: white;
+}
 </style>
+<div class="grilla">
 """, unsafe_allow_html=True)
 
-# Layout
-with st.container():
-    col1, col2 = st.columns([3, 2], gap="small")
+# Renderizar sectores
+for sector in sectores:
+    grupo = df_grouped[df_grouped['Sector'] == sector]
+    html = f'<div class="sector"><div class="sector-label">{sector}</div><div class="sku-container">'
+    for _, row in grupo.iterrows():
+        color = color_por_codigo(str(row['codigo']))
+        cantidad = int(row['cantidad'])
+        html += f'<div class="sku" style="background-color:{color};" title="{row["codigo"]}">{cantidad}</div>'
+    html += '</div></div>'
+    st.markdown(html, unsafe_allow_html=True)
 
-    with col1:
-        st.markdown('<div class="grilla">', unsafe_allow_html=True)
-        for sector in sectores_grilla:
-            cantidad = cantidades_por_sector.get(sector, 0)
-            with st.container():
-                html = f'<div class="sector"><div class="sector-label">{sector}</div>'
-                if cantidad > 0:
-                    html += f'<div class="cantidad-box">{cantidad}</div>'
-                html += '</div>'
-                st.markdown(html, unsafe_allow_html=True)
-                if st.button(f"Ver {sector}", key=sector):
-                    st.session_state.sector_activo = sector
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# Mostrar modal simulado
-if st.session_state.sector_activo:
-    st.markdown('<div class="overlay">', unsafe_allow_html=True)
-    st.markdown('<div class="modal-box">', unsafe_allow_html=True)
-
-    st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
-    detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
-    resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
-    st.dataframe(resumen, use_container_width=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
     if st.button("❌ Cerrar detalle"):
         st.session_state.sector_activo = None
