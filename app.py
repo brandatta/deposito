@@ -52,20 +52,21 @@ def color_por_codigo(codigo):
 if "sector_activo" not in st.session_state:
     st.session_state.sector_activo = None
 
-# CSS personalizado para reducir espacio entre columnas
+# CSS personalizado para layout ajustado
 st.markdown(f"""
 <style>
-/* Ajuste del espaciado horizontal entre columnas */
-.css-1lcbmhc .element-container {{
-    padding-right: 6px !important;
-    padding-left: 6px !important;
+.contenedor-flex {{
+    display: flex;
+    flex-direction: row;
+    gap: 10px; /* Espacio mínimo entre grilla y detalle */
+    align-items: flex-start;
+    margin-top: 20px;
 }}
 
 .grilla {{
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 22px;
-    margin-top: 20px;
     justify-items: center;
 }}
 
@@ -81,7 +82,6 @@ st.markdown(f"""
     justify-content: center;
     position: relative;
     box-sizing: border-box;
-    margin-bottom: 16px;
 }}
 
 .sector-label {{
@@ -109,30 +109,38 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Layout combinado con espacio reducido entre grilla y detalle
+# Layout con flexbox
 with st.container():
-    col1, col2 = st.columns([3, 2], gap="small")
+    st.markdown('<div class="contenedor-flex">', unsafe_allow_html=True)
 
-    with col1:
-        st.markdown('<div class="grilla">', unsafe_allow_html=True)
-        for sector in sectores_grilla:
-            cantidad = cantidades_por_sector.get(sector, 0)
-            with st.container():
-                html = f'<div class="sector"><div class="sector-label">{sector}</div>'
-                if cantidad > 0:
-                    html += f'<div class="cantidad-box">{cantidad}</div>'
-                html += '</div>'
-                st.markdown(html, unsafe_allow_html=True)
-                if st.button(f"Ver {sector}", key=sector):
-                    st.session_state.sector_activo = sector
-        st.markdown("</div>", unsafe_allow_html=True)
+    # Sección de grilla
+    grilla_html = '<div class="grilla">'
+    for sector in sectores_grilla:
+        cantidad = cantidades_por_sector.get(sector, 0)
+        html = f'<div class="sector"><div class="sector-label">{sector}</div>'
+        if cantidad > 0:
+            html += f'<div class="cantidad-box">{cantidad}</div>'
+        html += '</div>'
+        grilla_html += html
+    grilla_html += '</div>'
+    st.markdown(grilla_html, unsafe_allow_html=True)
 
-    with col2:
-        if st.session_state.sector_activo:
-            st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
+    # Botones de sector
+    st.markdown('<div>', unsafe_allow_html=True)
+    for sector in sectores_grilla:
+        if st.button(f"Ver {sector}", key=sector):
+            st.session_state.sector_activo = sector
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Detalle del sector
+    if st.session_state.sector_activo:
+        with st.container():
+            st.markdown(f"<h4>📍 Sector: {st.session_state.sector_activo}</h4>", unsafe_allow_html=True)
             if st.button("❌ Cerrar detalle"):
                 st.session_state.sector_activo = None
             else:
                 detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
                 resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
                 st.dataframe(resumen, use_container_width=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
