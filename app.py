@@ -32,6 +32,10 @@ if not {'Sector', 'cantidad', 'codigo'}.issubset(df.columns):
     st.error("La tabla debe tener las columnas: Sector, cantidad, codigo")
     st.stop()
 
+# Estado del sector seleccionado
+if 'sector_seleccionado' not in st.session_state:
+    st.session_state['sector_seleccionado'] = None
+
 # Dropdown para seleccionar SKU
 codigos_disponibles = df['codigo'].dropna().unique()
 codigo_seleccionado = st.selectbox("Seleccioná un código:", codigos_disponibles)
@@ -48,66 +52,25 @@ cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_se
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# CSS ajustado
-st.markdown(f"""
-<style>
-.grilla {{
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 25px;
-    margin-top: 30px;
-    justify-items: center;
-}}
+# Grilla con detalle al lado
+cols = st.columns([1, 1])  # [Grilla, Detalle]
 
-.sector {{
-    width: 120px;
-    aspect-ratio: 1 / 1;
-    border: 2px solid black;
-    border-radius: 8px;
-    background-color: #ffffff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px;
-    box-sizing: border-box;
-}}
+with cols[0]:  # Grilla a la izquierda
+    st.markdown("### 🗂️ Sectores")
+    grilla_cols = st.columns(3)
+    for i, sector in enumerate(sectores_grilla):
+        cantidad = cantidades_por_sector.get(sector, 0)
+        with grilla_cols[i]:
+            if st.button(f"{sector}\n({cantidad})", key=f"btn_{sector}"):
+                st.session_state['sector_seleccionado'] = sector
 
-.sector-label {{
-    font-size: 13px;
-    font-weight: bold;
-    text-align: center;
-    width: 100%;
-    margin-bottom: 6px;
-}}
-
-.cantidad-box {{
-    width: 40px;
-    height: 40px;
-    border-radius: 6px;
-    background-color: {color_por_codigo(codigo_seleccionado)};
-    color: white;
-    font-weight: bold;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}}
-</style>
-<div class="grilla">
-""", unsafe_allow_html=True)
-
-# Dibujar grilla con cantidad solo si > 0
-for sector in sectores_grilla:
-    cantidad = cantidades_por_sector.get(sector, 0)
-    html = f"""
-    <div class="sector">
-        <div class="sector-label">{sector}</div>"""
-    if cantidad > 0:
-        html += f"""
-        <div class="cantidad-box">{cantidad}</div>"""
-    html += "</div>"
-    st.markdown(html, unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
+with cols[1]:  # Detalle a la derecha
+    sector = st.session_state['sector_seleccionado']
+    if sector:
+        st.markdown(f"### 📄 Detalle del sector **{sector}**")
+        detalle = df[(df['Sector'] == sector) & (df['codigo'] == codigo_seleccionado)]
+        if not detalle.empty:
+            st.dataframe(detalle, use_container_width=True)
+        else:
+            st.info("No hay registros para este código en el sector seleccionado.")
 
