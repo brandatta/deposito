@@ -52,7 +52,7 @@ def color_por_codigo(codigo):
 if "sector_activo" not in st.session_state:
     st.session_state.sector_activo = None
 
-# CSS
+# Estilos
 st.markdown(f"""
 <style>
 .grilla {{
@@ -98,34 +98,22 @@ st.markdown(f"""
     margin-top: 12px;
 }}
 
-/* Fondo modal */
-.modal-overlay {{
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background-color: rgba(0,0,0,0.5);
-    z-index: 999;
+/* Simulación de modal */
+.overlay {{
+    background-color: rgba(0,0,0,0.6);
+    padding: 40px;
+    border-radius: 10px;
+    margin-top: 20px;
 }}
-
-/* Contenedor modal */
-.modal {{
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1000;
+.modal-box {{
     background-color: white;
     padding: 20px;
     border-radius: 10px;
-    width: 600px;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 0 20px rgba(0,0,0,0.3);
 }}
 </style>
 """, unsafe_allow_html=True)
 
-# Layout principal
+# Layout
 with st.container():
     col1, col2 = st.columns([3, 2], gap="small")
 
@@ -143,10 +131,10 @@ with st.container():
                     st.session_state.sector_activo = sector
         st.markdown("</div>", unsafe_allow_html=True)
 
-# MODAL visual (overlay + contenido Streamlit)
+# Mostrar modal simulado
 if st.session_state.sector_activo:
-    st.markdown('<div class="modal-overlay"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="modal">', unsafe_allow_html=True)
+    st.markdown('<div class="overlay">', unsafe_allow_html=True)
+    st.markdown('<div class="modal-box">', unsafe_allow_html=True)
 
     st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
     detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
@@ -156,4 +144,5 @@ if st.session_state.sector_activo:
     if st.button("❌ Cerrar detalle"):
         st.session_state.sector_activo = None
 
+    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
