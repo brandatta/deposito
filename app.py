@@ -55,23 +55,28 @@ if "sector_activo" not in st.session_state:
 # CSS personalizado
 st.markdown(f"""
 <style>
+/* Layout principal horizontal */
 .contenedor-flex {{
     display: flex;
     flex-direction: row;
-    gap: 15px;
     align-items: flex-start;
+    gap: 10px;
     margin-top: 20px;
 }}
 
+/* Grilla vertical */
 .columna-vertical {{
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 16px;
+    width: 280px;
+    min-width: 280px;
 }}
 
+/* Cuadro de sector */
 .sector {{
     width: 120px;
-    aspect-ratio: 1 / 1;
+    height: 120px;
     border: 2px solid black;
     border-radius: 8px;
     background-color: #ffffff;
@@ -105,34 +110,41 @@ st.markdown(f"""
     justify-content: center;
     margin-top: 12px;
 }}
+
+/* Panel de detalle */
+.detalle-panel {{
+    width: 360px;
+    min-width: 360px;
+}}
 </style>
 """, unsafe_allow_html=True)
 
-# Layout visual con flexbox
+# Layout visual
 st.markdown('<div class="contenedor-flex">', unsafe_allow_html=True)
 
-# Grilla vertical con botones
+# Grilla a la izquierda
 with st.container():
     st.markdown('<div class="columna-vertical">', unsafe_allow_html=True)
     for sector in sectores_grilla:
         cantidad = cantidades_por_sector.get(sector, 0)
 
-        # Mostrar caja de sector
+        # Caja del sector
         html = f'<div class="sector"><div class="sector-label">{sector}</div>'
         if cantidad > 0:
             html += f'<div class="cantidad-box">{cantidad}</div>'
         html += '</div>'
         st.markdown(html, unsafe_allow_html=True)
 
-        # Botón "Ver"
+        # Botón debajo
         if st.button(f"Ver {sector}", key=f"btn_{sector}"):
             st.session_state.sector_activo = sector
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Detalle del sector a la derecha
+# Panel de detalle a la derecha
 with st.container():
     if st.session_state.sector_activo:
-        st.markdown(f"<div style='min-width:300px; max-width: 400px;'><h4>📍 Sector: {st.session_state.sector_activo}</h4>", unsafe_allow_html=True)
+        st.markdown('<div class="detalle-panel">', unsafe_allow_html=True)
+        st.markdown(f"### 📍 Sector: {st.session_state.sector_activo}")
         if st.button("❌ Cerrar detalle"):
             st.session_state.sector_activo = None
         else:
@@ -141,4 +153,5 @@ with st.container():
             st.dataframe(resumen, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
+# Cierre del flex container
 st.markdown("</div>", unsafe_allow_html=True)
