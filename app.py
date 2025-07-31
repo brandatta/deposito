@@ -48,7 +48,7 @@ cantidades_por_sector = {row['Sector']: int(row['cantidad']) for _, row in df_se
 def color_por_codigo(codigo):
     return '#' + hashlib.md5(codigo.encode()).hexdigest()[:6]
 
-# CSS ajustado con títulos dentro de las celdas
+# CSS ajustado
 st.markdown(f"""
 <style>
 .grilla {{
@@ -97,15 +97,16 @@ st.markdown(f"""
 <div class="grilla">
 """, unsafe_allow_html=True)
 
-# Dibujar grilla
+# Dibujar grilla con cantidad solo si > 0
 for sector in sectores_grilla:
     cantidad = cantidades_por_sector.get(sector, 0)
     html = f"""
     <div class="sector">
-        <div class="sector-label">{sector}</div>
-        <div class="cantidad-box">{cantidad if cantidad > 0 else "-"}</div>
-    </div>
-    """
+        <div class="sector-label">{sector}</div>"""
+    if cantidad > 0:
+        html += f"""
+        <div class="cantidad-box">{cantidad}</div>"""
+    html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
