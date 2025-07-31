@@ -52,24 +52,26 @@ def color_por_codigo(codigo):
 if "sector_activo" not in st.session_state:
     st.session_state.sector_activo = None
 
-# CSS personalizado para layout ajustado
+# CSS personalizado
 st.markdown(f"""
 <style>
+/* Contenedor horizontal */
 .contenedor-flex {{
     display: flex;
     flex-direction: row;
-    gap: 50px; /* Espacio mínimo entre grilla y detalle */
+    gap: 10px;
     align-items: flex-start;
     margin-top: 20px;
 }}
 
-.grilla {{
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 22px;
-    justify-items: center;
+/* Grilla vertical (columna) */
+.columna-vertical {{
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
 }}
 
+/* Cuadro del sector */
 .sector {{
     width: 120px;
     aspect-ratio: 1 / 1;
@@ -109,12 +111,12 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Layout con flexbox
+# Layout
 with st.container():
     st.markdown('<div class="contenedor-flex">', unsafe_allow_html=True)
 
-    # Sección de grilla
-    grilla_html = '<div class="grilla">'
+    # Grilla vertical de sectores (columna izquierda)
+    grilla_html = '<div class="columna-vertical">'
     for sector in sectores_grilla:
         cantidad = cantidades_por_sector.get(sector, 0)
         html = f'<div class="sector"><div class="sector-label">{sector}</div>'
@@ -122,25 +124,41 @@ with st.container():
             html += f'<div class="cantidad-box">{cantidad}</div>'
         html += '</div>'
         grilla_html += html
+
+        # Botón debajo de cada sector
+        boton_html = f"""
+            <form action="" method="post">
+                <button type="submit" name="boton_{sector}" style="
+                    margin-top: 6px;
+                    padding: 4px 10px;
+                    font-size: 13px;
+                    border-radius: 6px;
+                    border: 1px solid #aaa;
+                    background-color: #eee;
+                ">Ver {sector}</button>
+            </form>
+        """
+        grilla_html += boton_html
     grilla_html += '</div>'
     st.markdown(grilla_html, unsafe_allow_html=True)
 
-    # Botones de sector
-    st.markdown('<div>', unsafe_allow_html=True)
+    # Capturar clicks
     for sector in sectores_grilla:
-        if st.button(f"Ver {sector}", key=sector):
+        if st.session_state.get(f"clicked_{sector}", False):
             st.session_state.sector_activo = sector
-    st.markdown('</div>', unsafe_allow_html=True)
+        elif st.session_state.get("click_event") == f"boton_{sector}":
+            st.session_state.sector_activo = sector
 
-    # Detalle del sector
-    if st.session_state.sector_activo:
-        with st.container():
-            st.markdown(f"<h4>📍 Sector: {st.session_state.sector_activo}</h4>", unsafe_allow_html=True)
+    # Detalle a la derecha (columna derecha)
+    with st.container():
+        if st.session_state.sector_activo:
+            st.markdown(f"<div style='min-width:300px;'><h4>📍 Sector: {st.session_state.sector_activo}</h4>", unsafe_allow_html=True)
             if st.button("❌ Cerrar detalle"):
                 st.session_state.sector_activo = None
             else:
                 detalle_sector = df[df['Sector'] == st.session_state.sector_activo]
                 resumen = detalle_sector.groupby("codigo", as_index=False)["cantidad"].sum()
                 st.dataframe(resumen, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
